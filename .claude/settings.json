@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -sL https://api.github.com/repos/obra/superpowers/contents/)",
+      "Bash(curl -sL https://api.github.com/repos/obra/superpowers/contents/.claude-plugin)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/obra/superpowers/main/.claude-plugin/plugin.json\")",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/obra/superpowers/main/.claude-plugin/marketplace.json\")",
+      "Bash(curl -sL \"https://api.github.com/repos/obra/superpowers/contents/.codex\")",
+      "Bash(curl -sL https://api.github.com/repos/nextlevelbuilder/ui-ux-pro-max-skill/contents/)",
+      "Bash(mkdir -p \"g:/claude code/MGILT_Website/.tmp\")",
+      "Bash(cp \"g:/claude code/MGILT_Website/index.html\" \"g:/claude code/MGILT_Website/.tmp/index.html.backup.20260331\")",
+      "Bash(npx serve:*)",
+      "Bash(curl -s http://localhost:8806/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/ccv2%2F2026-04-01%2FMiniMax-M2.7%2F2034271434573877539%2F45485546426c15b93c113cb8513e586673a0a8e5f4565a3d69249da1b9696320..jpeg\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com/ccv2%2F2026-04-01%2FMiniMax-M2.7%2F2034271434573877539%2F45485546426c15b93c113cb8513e586673a0a8e5f4565a3d69249da1b9696320..jpeg?Expires=1775120587&OSSAccessKeyId=LTAI5tGLnRTkBjLuYPjNcKQ8&Signature=rG9VzfGKIGO%2BQuO1a0yMJXuDei0%3D\")"
+    ]
+  }
+}

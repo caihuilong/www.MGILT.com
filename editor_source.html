@@ -1,0 +1,1864 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><style rel="stylesheet" type="text/css">@charset "utf-8";
+
+* { margin: 0px; padding: 0px; box-sizing: border-box; }
+
+:root { --bg: #F5F0E6; --sidebar: #EDE8DC; --border: #D4C9B8; --text: #3D3427; --text-light: #8A7D6B; --accent: #7BA05B; }
+
+html, body { height: 100%; overflow: hidden; font-family: "LXGW WenKai", serif; background: var(--bg); color: var(--text); }
+
+#app { display: grid; grid-template-columns: 220px 1fr 240px; grid-template-rows: 60px 1fr; height: 100vh; }
+
+header { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; padding: 0px 28px; background: linear-gradient(135deg, rgb(74, 122, 58) 0%, rgb(61, 104, 48) 100%); color: rgb(245, 240, 230); z-index: 10; box-shadow: rgba(0, 0, 0, 0.15) 0px 2px 16px; }
+
+header h1 { font-size: 22px; font-weight: 700; letter-spacing: 2px; text-shadow: rgba(0, 0, 0, 0.2) 0px 1px 3px; }
+
+header .subtitle { font-size: 12px; font-weight: 300; opacity: 0.8; margin-left: 12px; }
+
+header .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+
+header .btn-group { display: flex; gap: 0px; }
+
+header .btn-group button { border-radius: 0px; border-right-width: 0px; }
+
+header .btn-group button:first-child { border-radius: 8px 0px 0px 8px; }
+
+header .btn-group button:last-child { border-radius: 0px 8px 8px 0px; border-right-width: 1.5px; }
+
+header .btn-group button:only-child { border-radius: 8px; border-right-width: 1.5px; }
+
+header .sep { width: 1px; height: 20px; background: rgba(245, 240, 230, 0.2); margin: 0px 2px; }
+
+header button { padding: 6px 12px; border: 1.5px solid rgba(245, 240, 230, 0.4); border-radius: 8px; background: rgba(245, 240, 230, 0.12); color: rgb(245, 240, 230); font-family: inherit; font-size: 11px; cursor: pointer; transition: 0.25s; backdrop-filter: blur(4px); white-space: nowrap; }
+
+header button.active-mode { background: rgba(245, 240, 230, 0.3); border-color: rgba(245, 240, 230, 0.7); }
+
+header button:hover:not(:disabled) { background: rgba(245, 240, 230, 0.25); border-color: rgba(245, 240, 230, 0.7); transform: translateY(-1px); }
+
+header button:disabled { cursor: default; }
+
+.pal-badge { position: absolute; top: 4px; right: 4px; background: var(--accent); color: rgb(255, 255, 255); font-size: 10px; font-weight: 700; min-width: 18px; height: 18px; line-height: 18px; text-align: center; border-radius: 9px; padding: 0px 5px; display: none; }
+
+.pal-badge.show { display: block; }
+
+header .view-toggle { display: flex; gap: 0px; margin-left: 16px; }
+
+header .view-toggle button { border-radius: 0px; border-right-width: 0px; }
+
+header .view-toggle button:first-child { border-radius: 8px 0px 0px 8px; }
+
+header .view-toggle button:last-child { border-radius: 0px 8px 8px 0px; border-right-width: 1.5px; }
+
+header .view-toggle button.active { background: rgba(245, 240, 230, 0.3); border-color: rgba(245, 240, 230, 0.7); }
+
+#palette { background: var(--sidebar); border-right: 1px solid var(--border); padding: 20px 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+
+#palette h2 { font-size: 14px; font-weight: 400; color: var(--text-light); margin-bottom: 8px; text-align: center; letter-spacing: 1px; }
+
+.pal-item { position: relative; padding: 10px 8px; border-radius: 10px; cursor: pointer; transition: 0.2s; border: 2px solid transparent; display: flex; align-items: center; gap: 10px; min-height: 56px; }
+
+.pal-item:hover { background: rgba(123, 160, 91, 0.08); border-color: rgba(123, 160, 91, 0.2); }
+
+.pal-item.selected { background: rgba(123, 160, 91, 0.14); border-color: var(--accent); box-shadow: rgba(123, 160, 91, 0.18) 0px 2px 12px; }
+
+.pal-swatch { width: 32px; height: 32px; border-radius: 6px; flex-shrink: 0; box-shadow: rgba(0, 0, 0, 0.15) 0px -3px 0px inset, rgba(0, 0, 0, 0.1) 0px 1px 4px; }
+
+.pal-info { display: flex; flex-direction: column; gap: 2px; }
+
+.pal-info .name { font-size: 14px; font-weight: 700; }
+
+.pal-info .dim { font-size: 11px; color: var(--text-light); }
+
+#canvas-wrap { position: relative; overflow: hidden; }
+
+#canvas-wrap canvas { display: block; width: 100% !important; height: 100% !important; }
+
+.hint { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); font-size: 12px; color: var(--text-light); pointer-events: none; opacity: 0.7; background: rgba(245, 240, 230, 0.8); padding: 4px 14px; border-radius: 6px; backdrop-filter: blur(4px); }
+
+#stats { background: var(--sidebar); border-left: 1px solid var(--border); padding: 20px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+
+#stats h2 { font-size: 14px; font-weight: 400; color: var(--text-light); text-align: center; letter-spacing: 1px; }
+
+.stat-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.4); }
+
+.stat-color { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
+
+.stat-name { flex: 1 1 0%; font-size: 13px; }
+
+.stat-count { font-size: 15px; font-weight: 700; color: var(--accent); min-width: 20px; text-align: right; }
+
+#total-area { margin-top: auto; padding: 14px; border-radius: 10px; text-align: center; background: linear-gradient(135deg, rgba(123, 160, 91, 0.1), rgba(123, 160, 91, 0.05)); border: 1px solid rgba(123, 160, 91, 0.2); }
+
+#total-area .label { font-size: 12px; color: var(--text-light); }
+
+#total-area .value { font-size: 22px; font-weight: 700; color: rgb(74, 122, 58); margin-top: 4px; }
+
+#total-area .unit { font-size: 12px; color: var(--text-light); }
+
+#total-price { padding: 14px; border-radius: 10px; text-align: center; margin-top: 8px; background: linear-gradient(135deg, rgba(180, 130, 60, 0.1), rgba(180, 130, 60, 0.05)); border: 1px solid rgba(180, 130, 60, 0.2); }
+
+#total-price .label { font-size: 12px; color: var(--text-light); }
+
+#total-price .value { font-size: 22px; font-weight: 700; color: rgb(139, 106, 48); margin-top: 4px; }
+
+#minimap { width: 100%; aspect-ratio: 1 / 1; border-radius: 10px; border: 1px solid var(--border); background: rgba(255, 255, 255, 0.5); overflow: hidden; }
+
+#minimap canvas { width: 100%; height: 100%; display: block; }
+
+.mode-toggles { display: flex; gap: 6px; margin-top: 4px; }
+
+.mode-btn { flex: 1 1 0%; padding: 6px 0px; border: 1.5px solid var(--border); border-radius: 8px; background: rgba(255, 255, 255, 0.4); color: var(--text); font-family: inherit; font-size: 11px; cursor: pointer; transition: 0.2s; text-align: center; }
+
+.mode-btn:hover { border-color: var(--accent); background: rgba(123, 160, 91, 0.08); }
+
+.mode-btn.active { background: rgba(123, 160, 91, 0.15); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(60px); background: rgb(61, 52, 39); color: rgb(245, 240, 230); padding: 10px 24px; border-radius: 10px; font-size: 13px; opacity: 0; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; z-index: 100; }
+
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0px); }
+
+.tooltip { position: fixed; padding: 8px 14px; border-radius: 8px; font-size: 12px; background: rgba(61, 52, 39, 0.92); color: rgb(245, 240, 230); pointer-events: none; z-index: 90; backdrop-filter: blur(6px); box-shadow: rgba(0, 0, 0, 0.2) 0px 4px 16px; transform: translateX(-50%) translateY(-8px); opacity: 0; transition: opacity 0.2s; }
+
+.tooltip.show { opacity: 1; }
+
+.tooltip .tt-name { font-weight: 700; font-size: 13px; }
+
+.tooltip .tt-dim { opacity: 0.7; margin-top: 2px; }
+
+::-webkit-scrollbar { width: 6px; }
+
+::-webkit-scrollbar-track { background: transparent; }
+
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+@media (max-width: 900px) {
+  #app { grid-template-columns: 180px 1fr 0px; }
+  #stats { display: none; }
+}
+
+@media (max-width: 600px) {
+  #app { grid-template-columns: 1fr; grid-template-rows: 56px auto 1fr; }
+  #palette { flex-direction: row; overflow: auto hidden; border-right: none; border-bottom: 1px solid var(--border); padding: 8px; gap: 8px; }
+  #palette h2 { display: none; }
+  .pal-item { flex-direction: column; min-height: auto; padding: 6px; }
+}</style>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>麦吉花园 · 3D</title>
+<link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai:wght@300;400;700&amp;display=swap" rel="stylesheet">
+
+</head>
+<body>
+<div id="app">
+  <header>
+    <div style="display:flex;align-items:baseline;">
+      <h1>麦吉花园</h1>
+      <span class="subtitle">3D</span>
+    </div>
+    <div class="actions">
+      <button id="undo-btn" disabled="" style="opacity:.4" onclick="undoAction()">撤销</button>
+      <div class="sep"></div>
+      <div class="btn-group">
+        <button title="俯视" onclick="setCameraView('top')">俯视</button>
+        <button title="正面" onclick="setCameraView('front')">正面</button>
+        <button title="侧面" onclick="setCameraView('side')">侧面</button>
+      </div>
+      <div class="sep"></div>
+      <button onclick="randomFill()">随机花园</button>
+      <button onclick="clearCanvas()">清空</button>
+      <div class="sep"></div>
+      <div class="btn-group">
+        <button onclick="saveToLocal()">保存</button>
+        <button onclick="loadFromLocal()">加载</button>
+      </div>
+      <div class="btn-group">
+        <button onclick="exportDesign()">导出</button>
+        <button onclick="saveScreenshot()">截图</button>
+      </div>
+      <div class="sep"></div>
+      <button id="dn-btn" onclick="toggleDayNight()">日光</button>
+    </div>
+  </header>
+  <div id="palette">
+    <h2>模块面板</h2>
+  </div>
+  <div id="canvas-wrap">
+    <div class="hint">左键放置 · 右键移除 · 拖拽旋转 · 滚轮缩放 · Ctrl+Z 撤销</div>
+  </div>
+  <div id="stats">
+    <h2>设计统计</h2>
+    <div id="minimap"><canvas id="minimap-canvas" width="200" height="200"></canvas></div>
+    <div class="mode-toggles">
+      <button class="mode-btn" id="eraser-btn" onclick="toggleEraser()">橡皮擦</button>
+      <button class="mode-btn" id="fill-btn" onclick="toggleFillBucket()">填充</button>
+      <button class="mode-btn" id="sym-btn" onclick="toggleSymmetry()">对称</button>
+    </div>
+    <div id="stat-rows"></div>
+    <div id="total-area">
+      <div class="label">总占地面积</div>
+      <div class="value">0</div>
+      <div class="unit">平方毫米</div>
+    </div>
+    <div id="total-price">
+      <div class="label">模块总价</div>
+      <div class="value">¥0</div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" style=""></div>
+<div class="tooltip" id="tooltip" style=""></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+// ============ IMPORTS ============
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============ CONFIG ============
+const MODULES = [
+  { id:0, name:'踏板',     height:50,  type:'step',    desc:'50mm' },
+  { id:1, name:'矮坐凳',   height:280, type:'seat',    desc:'280mm' },
+  { id:2, name:'矮种植箱', height:380, type:'planter', desc:'380mm' },
+  { id:3, name:'高坐凳',   height:480, type:'seat',    desc:'480mm' },
+  { id:4, name:'高种植箱', height:580, type:'planter', desc:'580mm' },
+  { id:5, name:'景观桌',   height:780, type:'table',   desc:'780mm' },
+];
+// Visual constants - matching reference image
+const FRAME_COLOR = 0x3D3530;  // dark charcoal-brown steel
+const WOOD_SIDE  = 0xC8A060;   // warm golden-tan plank
+const WOOD_SIDE2 = 0xB89050;   // slightly darker alternating plank
+const WOOD_TOP   = 0xD4B078;   // lighter sandy wood top
+const SOIL_TOP   = 0x7BA832;   // yellow-green (黄绿色)
+const STEP_COLOR = 0xB8B8B0;   // medium gray concrete
+const GLASS_COLOR = 0x5A9AB5;  // blue-teal glass
+const FRAME_T = 0.03;          // frame thickness (slightly thicker)
+const HEX_SIDE = 490;
+const HEX_AREA_MM = (3 * Math.sqrt(3) / 2) * HEX_SIDE * HEX_SIDE;
+const GRID_RADIUS = 5;
+const SCALE = 0.002; // mm to scene units: 490mm -> ~0.98 units
+const HEX_R = HEX_SIDE * SCALE; // outer radius in scene units
+const GAP = 0.04; // small gap between hexes
+
+// ============ STATE ============
+let placed = {};
+let selectedModule = 0;
+let hoverKey = null;
+let meshes = {};      // key -> THREE.Group (placed prism)
+let ghostMesh = null;
+let gridCells = {};   // key -> { mesh, q, r }
+let undoStack = [];   // { action:'place'|'remove'|'replace', key, q, r, moduleId, prevModuleId? }
+let plantMeshes = []; // track plant blobs for sway animation
+let particles = [];   // placement particle effects
+let eraserMode = false;
+let symmetryMode = false;
+let fillBucketMode = false;
+
+// ============ SCENE SETUP ============
+const wrap = document.getElementById('canvas-wrap');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xF5F0E6);
+scene.fog = new THREE.FogExp2(0xF5F0E6, 0.035);
+
+const camera = new THREE.PerspectiveCamera(40, wrap.clientWidth / wrap.clientHeight, 0.1, 200);
+camera.position.set(8, 10, 8);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, logarithmicDepthBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+wrap.prepend(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI * 0.48;
+controls.minPolarAngle = Math.PI * 0.05;
+controls.minDistance = 4;
+controls.maxDistance = 30;
+controls.target.set(0, 0, 0);
+
+// Lights
+const ambLight = new THREE.AmbientLight(0xfff5e6, 0.6);
+scene.add(ambLight);
+const hemiLight = new THREE.HemisphereLight(0xC5E8FF, 0x8B7D5A, 0.5);
+scene.add(hemiLight);
+
+const dirLight = new THREE.DirectionalLight(0xFFF8EE, 1.4);
+dirLight.position.set(6, 12, 4);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(2048, 2048);
+dirLight.shadow.camera.left = -15; dirLight.shadow.camera.right = 15;
+dirLight.shadow.camera.top = 15; dirLight.shadow.camera.bottom = -15;
+dirLight.shadow.camera.near = 1; dirLight.shadow.camera.far = 40;
+dirLight.shadow.bias = -0.001;
+dirLight.shadow.normalBias = 0.02;
+scene.add(dirLight);
+
+// Ground with procedural zen garden texture
+const groundCanvas = document.createElement('canvas');
+groundCanvas.width = 512; groundCanvas.height = 512;
+const gctx = groundCanvas.getContext('2d');
+// Base sand color
+gctx.fillStyle = '#E8E0D0';
+gctx.fillRect(0, 0, 512, 512);
+// Concentric zen garden rake lines
+gctx.strokeStyle = 'rgba(200,190,170,0.4)';
+gctx.lineWidth = 1.5;
+for (let r = 20; r < 360; r += 12) {
+  gctx.beginPath();
+  gctx.arc(256, 256, r, 0, Math.PI * 2);
+  gctx.stroke();
+}
+// Subtle noise grain
+for (let i = 0; i < 3000; i++) {
+  const x = Math.random() * 512, y = Math.random() * 512;
+  const a = 0.03 + Math.random() * 0.06;
+  gctx.fillStyle = `rgba(${Math.random() > 0.5 ? '160,150,130' : '220,215,200'},${a})`;
+  gctx.fillRect(x, y, 1.5, 1.5);
+}
+const groundTex = new THREE.CanvasTexture(groundCanvas);
+groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
+const groundGeo = new THREE.CircleGeometry(20, 64);
+const groundMat = new THREE.MeshStandardMaterial({ map: groundTex, roughness: 0.95, metalness: 0 });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.02;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// ============ HEX GEOMETRY ============
+function createHexShape(radius) {
+  const shape = new THREE.Shape();
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i - Math.PI / 6;
+    const x = radius * Math.cos(angle);
+    const z = radius * Math.sin(angle);
+    if (i === 0) shape.moveTo(x, z);
+    else shape.lineTo(x, z);
+  }
+  shape.closePath();
+  return shape;
+}
+
+function hexToWorld(q, r) {
+  const x = HEX_R * Math.sqrt(3) * (q + r / 2);
+  const z = HEX_R * 1.5 * r;
+  return { x, z };
+}
+
+function hexKey(q, r) { return `${q},${r}`; }
+
+function isInGrid(q, r) {
+  const s = -q - r;
+  return Math.abs(q) <= GRID_RADIUS && Math.abs(r) <= GRID_RADIUS && Math.abs(s) <= GRID_RADIUS;
+}
+
+// ============ GRID BUILD ============
+const gridGroup = new THREE.Group();
+scene.add(gridGroup);
+
+const cellShape = createHexShape(HEX_R - GAP);
+const cellGeo = new THREE.ShapeGeometry(cellShape);
+const cellMat = new THREE.MeshStandardMaterial({
+  color: 0xD4CCB8, roughness: 0.9, metalness: 0, transparent: true, opacity: 0.35
+});
+const hoverMat = new THREE.MeshStandardMaterial({
+  color: 0x7BA05B, roughness: 0.8, metalness: 0, transparent: true, opacity: 0.4
+});
+
+const edgeShape = createHexShape(HEX_R - GAP * 0.5);
+const edgeGeo = new THREE.EdgesGeometry(new THREE.ShapeGeometry(edgeShape));
+const edgeMat = new THREE.LineBasicMaterial({ color: 0xC4B8A2, transparent: true, opacity: 0.5 });
+
+for (let q = -GRID_RADIUS; q <= GRID_RADIUS; q++) {
+  for (let r = -GRID_RADIUS; r <= GRID_RADIUS; r++) {
+    if (!isInGrid(q, r)) continue;
+    const { x, z } = hexToWorld(q, r);
+    const key = hexKey(q, r);
+
+    const cell = new THREE.Mesh(cellGeo, cellMat.clone());
+    cell.rotation.x = -Math.PI / 2;
+    cell.position.set(x, 0, z);
+    cell.userData = { q, r, key, type: 'cell' };
+    gridGroup.add(cell);
+    gridCells[key] = { mesh: cell, q, r };
+
+    const edge = new THREE.LineSegments(edgeGeo, edgeMat);
+    edge.rotation.x = -Math.PI / 2;
+    edge.position.set(x, 0.002, z);
+    gridGroup.add(edge);
+  }
+}
+
+// ============ MODULE MESH ============
+// Shared materials (created once, reused)
+const frameMat = new THREE.MeshStandardMaterial({ color: FRAME_COLOR, roughness: 0.5, metalness: 0.35 });
+const frameMatGhost = new THREE.MeshStandardMaterial({ color: FRAME_COLOR, roughness: 0.5, metalness: 0.35, transparent: true, opacity: 0.35 });
+
+function getHexCorners(radius) {
+  const c = [];
+  for (let i = 0; i < 6; i++) {
+    const a = (Math.PI / 3) * i - Math.PI / 6;
+    c.push({ x: radius * Math.cos(a), z: radius * Math.sin(a) });
+  }
+  return c;
+}
+
+function addSteelFrame(group, R, h, ghost) {
+  const mat = ghost ? frameMatGhost : frameMat;
+  const corners = getHexCorners(R);
+  const ft = FRAME_T;
+
+  // 6 vertical bars at corners
+  const vGeo = new THREE.BoxGeometry(ft, h, ft);
+  corners.forEach(c => {
+    const bar = new THREE.Mesh(vGeo, mat);
+    bar.position.set(c.x, h / 2, c.z);
+    bar.castShadow = !ghost;
+    group.add(bar);
+  });
+
+  // Horizontal bars at top and bottom
+  for (let i = 0; i < 6; i++) {
+    const c1 = corners[i], c2 = corners[(i + 1) % 6];
+    const dx = c2.x - c1.x, dz = c2.z - c1.z;
+    const len = Math.sqrt(dx * dx + dz * dz);
+    const mx = (c1.x + c2.x) / 2, mz = (c1.z + c2.z) / 2;
+    const angle = Math.atan2(dx, dz);
+    const hGeo = new THREE.BoxGeometry(ft, ft, len + ft);
+
+    [ft / 2, h - ft / 2].forEach(y => {
+      const bar = new THREE.Mesh(hGeo, mat);
+      bar.position.set(mx, y, mz);
+      bar.rotation.y = angle;
+      bar.castShadow = !ghost;
+      group.add(bar);
+    });
+  }
+}
+
+function addWoodPlanks(group, R, h, ghost, opacity) {
+  // Create wood plank panels on each of the 6 side faces
+  const corners = getHexCorners(R);
+  const ft = FRAME_T;
+  const plankH = 0.15; // target plank height in scene units
+  const numPlanks = Math.max(1, Math.round((h - ft * 2) / plankH));
+  const actualPlankH = (h - ft * 2) / numPlanks;
+  const gapH = 0.006; // thin gap between planks
+
+  const woodMat = new THREE.MeshStandardMaterial({
+    color: WOOD_SIDE, roughness: 0.72, metalness: 0,
+    transparent: ghost, opacity: ghost ? 0.35 : opacity
+  });
+  const woodMatDark = new THREE.MeshStandardMaterial({
+    color: WOOD_SIDE2, roughness: 0.72, metalness: 0,
+    transparent: ghost, opacity: ghost ? 0.35 : opacity
+  });
+
+  for (let i = 0; i < 6; i++) {
+    const c1 = corners[i], c2 = corners[(i + 1) % 6];
+    const dx = c2.x - c1.x, dz = c2.z - c1.z;
+    const len = Math.sqrt(dx * dx + dz * dz);
+    const mx = (c1.x + c2.x) / 2, mz = (c1.z + c2.z) / 2;
+    const angle = Math.atan2(dx, dz);
+    // outward normal
+    const nx = -dz / len, nz = dx / len;
+
+    for (let p = 0; p < numPlanks; p++) {
+      const py = ft + p * actualPlankH + actualPlankH / 2;
+      const pH = actualPlankH - gapH;
+      const pW = len - ft * 2.5;
+      const geo = new THREE.BoxGeometry(ft * 0.4, pH, pW);
+      const mat = (p % 2 === 0) ? woodMat : woodMatDark;
+      const plank = new THREE.Mesh(geo, mat);
+      const faceDist = R * Math.sqrt(3) / 2;
+      plank.position.set(nx * faceDist, py, nz * faceDist);
+      plank.rotation.y = angle;
+      plank.castShadow = !ghost;
+      plank.receiveShadow = !ghost;
+      group.add(plank);
+    }
+  }
+}
+
+function addTopFace(group, R, h, moduleType, ghost, opacity) {
+  const inset = FRAME_T * 1.2;
+  const topShape = createHexShape(R - inset);
+  const topGeo = new THREE.ShapeGeometry(topShape);
+  const isPlanter = moduleType === 'planter';
+  const isTable = moduleType === 'table';
+  const color = isPlanter ? SOIL_TOP : WOOD_TOP;
+  const topMat = new THREE.MeshStandardMaterial({
+    color, roughness: isPlanter ? 0.95 : 0.65, metalness: 0,
+    transparent: ghost, opacity: ghost ? 0.35 : opacity
+  });
+  const topMesh = new THREE.Mesh(topGeo, topMat);
+  topMesh.rotation.x = -Math.PI / 2;
+  topMesh.position.y = h + 0.002;
+  topMesh.receiveShadow = true;
+  group.add(topMesh);
+
+  // Planter: dark soil with 3D plants
+  if (isPlanter && !ghost) {
+    addPlants(group, R - inset, h);
+  }
+
+  // Table: clean wood top (no decorations)
+}
+
+// ============ 3D PLANTS ============
+function addPlants(group, topR, h) {
+  // Scale: 0.002 mm->scene. Low planter h≈0.76 (380mm), High planter h≈1.16 (580mm)
+  // HEX_R ≈ 0.98, topR ≈ 0.94
+  const isLow = h < 1.0;
+
+  const greenPalette  = [0x2D5A1E, 0x3A6B2A, 0x4A7A3A, 0x1E4A15, 0x557744, 0x6B8E4A];
+  const darkGreens    = [0x1E4A15, 0x2D5A1E, 0x264D20, 0x305A28];
+  const flowerColors  = [0xE86090, 0xD4508A, 0xB860C0, 0x9977BB, 0xE8A8B8, 0xF0C860, 0xE87040];
+  const shrubGreens   = [0x2A5020, 0x3A6830, 0x4A7A3A, 0x1A4010, 0x305828, 0x486A38];
+
+  // ---- Helper: grass blade clump (2x scaled) ----
+  function makeGrassClump(px, pz, baseY, clumpH) {
+    const g = new THREE.Group();
+    const bladeCount = 7 + Math.floor(Math.random() * 5);
+    for (let i = 0; i < bladeCount; i++) {
+      const bh = clumpH * (0.6 + Math.random() * 0.4);
+      const bw = 0.012 + Math.random() * 0.01;
+      const bladeGeo = new THREE.ConeGeometry(bw, bh, 3, 1);
+      const gc = greenPalette[Math.floor(Math.random() * greenPalette.length)];
+      const bladeMat = new THREE.MeshStandardMaterial({ color: gc, roughness: 0.9, metalness: 0 });
+      const blade = new THREE.Mesh(bladeGeo, bladeMat);
+      const spread = 0.08 + Math.random() * 0.06;
+      const bx = (Math.random() - 0.5) * spread;
+      const bz = (Math.random() - 0.5) * spread;
+      blade.position.set(bx, bh / 2, bz);
+      blade.rotation.z = (Math.random() - 0.5) * 0.4;
+      blade.rotation.x = (Math.random() - 0.5) * 0.4;
+      blade.castShadow = true;
+      g.add(blade);
+    }
+    g.position.set(px, baseY, pz);
+    g.userData.isPlant = true;
+    g.userData.swayOffset = Math.random() * Math.PI * 2;
+    g.userData.swaySpeed = 1.2 + Math.random() * 0.8;
+    g.userData.swayAmt = 0.025 + Math.random() * 0.03;
+    g.userData.baseX = px;
+    g.userData.baseZ = pz;
+    return g;
+  }
+
+  // ---- Helper: flower (2x scaled) ----
+  function makeFlower(px, pz, baseY, flowerH, petalColor) {
+    const g = new THREE.Group();
+    const stemGeo = new THREE.CylinderGeometry(0.01, 0.014, flowerH * 0.75, 5);
+    const stemMat = new THREE.MeshStandardMaterial({ color: 0x3A5528, roughness: 0.9 });
+    const stem = new THREE.Mesh(stemGeo, stemMat);
+    stem.position.set(0, flowerH * 0.375, 0);
+    g.add(stem);
+    for (let li = 0; li < 2; li++) {
+      const leafH = flowerH * 0.18;
+      const leafGeo = new THREE.ConeGeometry(0.024, leafH, 3, 1);
+      const leafMat = new THREE.MeshStandardMaterial({ color: 0x4A7A3A, roughness: 0.85 });
+      const leaf = new THREE.Mesh(leafGeo, leafMat);
+      const ly = flowerH * (0.2 + li * 0.2);
+      const la = li * Math.PI;
+      leaf.position.set(Math.cos(la) * 0.024, ly, Math.sin(la) * 0.024);
+      leaf.rotation.z = (la > Math.PI / 2 ? 1 : -1) * 0.5;
+      g.add(leaf);
+    }
+    const centerGeo = new THREE.SphereGeometry(0.024, 6, 5);
+    const centerMat = new THREE.MeshStandardMaterial({ color: 0xE8D060, roughness: 0.7 });
+    const center = new THREE.Mesh(centerGeo, centerMat);
+    center.position.set(0, flowerH * 0.85, 0);
+    g.add(center);
+    const petalCount = 5 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < petalCount; i++) {
+      const pa = (i / petalCount) * Math.PI * 2 + Math.random() * 0.2;
+      const pd = 0.036;
+      const petalGeo = new THREE.SphereGeometry(0.024, 5, 4);
+      const petalMat = new THREE.MeshStandardMaterial({ color: petalColor, roughness: 0.6, metalness: 0 });
+      const petal = new THREE.Mesh(petalGeo, petalMat);
+      petal.position.set(Math.cos(pa) * pd, flowerH * 0.85, Math.sin(pa) * pd);
+      petal.scale.set(1.2, 0.35, 1.2);
+      g.add(petal);
+    }
+    g.position.set(px, baseY, pz);
+    g.userData.isPlant = true;
+    g.userData.swayOffset = Math.random() * Math.PI * 2;
+    g.userData.swaySpeed = 0.9 + Math.random() * 0.5;
+    g.userData.swayAmt = 0.03 + Math.random() * 0.035;
+    g.userData.baseX = px;
+    g.userData.baseZ = pz;
+    return g;
+  }
+
+  // ---- Helper: ground-cover plant (2x scaled) ----
+  function makeGroundCover(px, pz, baseY, coverH) {
+    const g = new THREE.Group();
+    const leafCount = 5 + Math.floor(Math.random() * 3);
+    const gc = greenPalette[Math.floor(Math.random() * greenPalette.length)];
+    for (let i = 0; i < leafCount; i++) {
+      const la = (i / leafCount) * Math.PI * 2 + Math.random() * 0.3;
+      const ld = 0.03 + Math.random() * 0.04;
+      const lh = coverH * (0.5 + Math.random() * 0.5);
+      const leafGeo = new THREE.ConeGeometry(0.02 + Math.random() * 0.016, lh, 4, 1);
+      const leafMat = new THREE.MeshStandardMaterial({ color: gc, roughness: 0.85 });
+      const leaf = new THREE.Mesh(leafGeo, leafMat);
+      leaf.position.set(Math.cos(la) * ld, lh * 0.4, Math.sin(la) * ld);
+      leaf.rotation.z = Math.cos(la) * 0.4;
+      leaf.rotation.x = Math.sin(la) * 0.4;
+      leaf.castShadow = true;
+      g.add(leaf);
+    }
+    g.position.set(px, baseY, pz);
+    g.userData.isPlant = true;
+    g.userData.swayOffset = Math.random() * Math.PI * 2;
+    g.userData.swaySpeed = 1.0 + Math.random() * 0.6;
+    g.userData.swayAmt = 0.015 + Math.random() * 0.02;
+    g.userData.baseX = px;
+    g.userData.baseZ = pz;
+    return g;
+  }
+
+  // ---- Helper: round shrub (2x scaled) ----
+  function makeShrub(px, pz, baseY, shrubH, shrubR, color) {
+    const g = new THREE.Group();
+    const stemH = shrubH * 0.25;
+    const stemGeo = new THREE.CylinderGeometry(0.016, 0.024, stemH, 5);
+    const stemMat = new THREE.MeshStandardMaterial({ color: 0x5A4030, roughness: 0.9 });
+    const stem = new THREE.Mesh(stemGeo, stemMat);
+    stem.position.set(0, stemH / 2, 0);
+    g.add(stem);
+    const mainGeo = new THREE.SphereGeometry(shrubR, 8, 6);
+    const mainMat = new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0 });
+    const main = new THREE.Mesh(mainGeo, mainMat);
+    main.position.set(0, stemH + shrubR * 0.7, 0);
+    main.scale.set(1, 0.8, 1);
+    main.castShadow = true;
+    g.add(main);
+    const blobCount = 2 + Math.floor(Math.random() * 2);
+    for (let j = 0; j < blobCount; j++) {
+      const ba = (j / blobCount) * Math.PI * 2 + Math.random() * 0.5;
+      const bd = shrubR * 0.55;
+      const bR = shrubR * (0.5 + Math.random() * 0.3);
+      const bColor = new THREE.Color(color).offsetHSL(0, 0, -0.04 + Math.random() * 0.08).getHex();
+      const bGeo = new THREE.SphereGeometry(bR, 6, 5);
+      const bMat = new THREE.MeshStandardMaterial({ color: bColor, roughness: 0.85 });
+      const b = new THREE.Mesh(bGeo, bMat);
+      b.position.set(Math.cos(ba) * bd, stemH + shrubR * 0.5 + Math.random() * shrubR * 0.3, Math.sin(ba) * bd);
+      b.scale.set(1, 0.75, 1);
+      b.castShadow = true;
+      g.add(b);
+    }
+    g.position.set(px, baseY, pz);
+    g.userData.isPlant = true;
+    g.userData.swayOffset = Math.random() * Math.PI * 2;
+    g.userData.swaySpeed = 0.6 + Math.random() * 0.4;
+    g.userData.swayAmt = 0.02 + Math.random() * 0.02;
+    g.userData.baseX = px;
+    g.userData.baseZ = pz;
+    return g;
+  }
+
+  // ---- Helper: round-canopy mini tree (2x scaled, no cones) ----
+  function makeMiniTree(baseY, treeH, canopyR) {
+    const g = new THREE.Group();
+    const trunkH = treeH * 0.45;
+    const trunkGeo = new THREE.CylinderGeometry(0.02, 0.032, trunkH, 6);
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5A4030, roughness: 0.9 });
+    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+    trunk.position.set(0, trunkH / 2, 0);
+    g.add(trunk);
+    const canopyColors = [0x1E4A15, 0x2D5A1E, 0x3A6B2A];
+    const mainR = canopyR * 1.6;
+    const mainGeo = new THREE.SphereGeometry(mainR, 8, 6);
+    const mainMat = new THREE.MeshStandardMaterial({ color: canopyColors[0], roughness: 0.85 });
+    const mainCanopy = new THREE.Mesh(mainGeo, mainMat);
+    mainCanopy.position.set(0, trunkH + mainR * 0.6, 0);
+    mainCanopy.scale.set(1, 0.85, 1);
+    mainCanopy.castShadow = true;
+    g.add(mainCanopy);
+    for (let l = 0; l < 3; l++) {
+      const sa = (l / 3) * Math.PI * 2 + Math.random() * 0.5;
+      const sd = mainR * 0.5;
+      const sr = mainR * (0.55 + Math.random() * 0.2);
+      const sGeo = new THREE.SphereGeometry(sr, 6, 5);
+      const sMat = new THREE.MeshStandardMaterial({ color: canopyColors[l], roughness: 0.85 });
+      const s = new THREE.Mesh(sGeo, sMat);
+      s.position.set(Math.cos(sa) * sd, trunkH + mainR * 0.4 + Math.random() * mainR * 0.3, Math.sin(sa) * sd);
+      s.scale.set(1, 0.8, 1);
+      s.castShadow = true;
+      g.add(s);
+    }
+    g.position.set(0, baseY, 0);
+    g.userData.isPlant = true;
+    g.userData.swayOffset = Math.random() * Math.PI * 2;
+    g.userData.swaySpeed = 0.5;
+    g.userData.swayAmt = 0.03;
+    g.userData.baseX = 0;
+    g.userData.baseZ = 0;
+    return g;
+  }
+
+  // =========== LOW PLANTER: grass & flowers (2x density) ===========
+  if (isLow) {
+    const count = 18;
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2 + Math.random() * 0.5;
+      const dist = topR * (0.08 + Math.random() * 0.7);
+      const px = Math.cos(angle) * dist;
+      const pz = Math.sin(angle) * dist;
+      const roll = Math.random();
+
+      if (roll < 0.25) {
+        const gh = 0.4 + Math.random() * 0.4;
+        group.add(makeGrassClump(px, pz, h, gh));
+      } else if (roll < 0.75) {
+        const fh = 0.6 + Math.random() * 0.6;
+        const fc = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+        group.add(makeFlower(px, pz, h, fh, fc));
+      } else {
+        const ch = 0.32 + Math.random() * 0.28;
+        group.add(makeGroundCover(px, pz, h, ch));
+      }
+    }
+    const centerH = 0.8 + Math.random() * 0.3;
+    const centerColor = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+    group.add(makeFlower(0, 0, h, centerH, centerColor));
+    for (let i = 0; i < 6; i++) {
+      const ea = Math.random() * Math.PI * 2;
+      const ed = topR * (0.5 + Math.random() * 0.35);
+      group.add(makeGrassClump(Math.cos(ea) * ed, Math.sin(ea) * ed, h, 0.3 + Math.random() * 0.3));
+    }
+  }
+  // =========== HIGH PLANTER: organic varied shrubs ===========
+  else {
+    const shrubColorSet = [0x8BB830, 0x7BA832, 0x4A7A3A, 0x7BA832, 0x5A8A48, 0x6B9A50];
+    const plantCount = 2 + Math.floor(Math.random() * 3); // 2-4 plants
+
+    // Generate well-spaced positions using angle partitioning
+    const positions = [];
+    const baseAngle = Math.random() * Math.PI * 2;
+    for (let i = 0; i < plantCount; i++) {
+      const sectorAngle = (Math.PI * 2) / plantCount;
+      const a = baseAngle + i * sectorAngle + (Math.random() - 0.5) * sectorAngle * 0.5;
+      const d = topR * (0.25 + Math.random() * 0.55);
+      const px = Math.cos(a) * d;
+      const pz = Math.sin(a) * d;
+      positions.push({ x: px, z: pz });
+    }
+
+    positions.forEach((pos, idx) => {
+      const sg = new THREE.Group();
+      const baseColor = shrubColorSet[Math.floor(Math.random() * shrubColorSet.length)];
+      const shapeType = Math.random(); // vary shape per plant
+      const sizeScale = 0.7 + Math.random() * 0.6; // random size variation
+      const baseR = topR * 0.5 * sizeScale;
+
+      // Stem/trunk (slight random lean)
+      const stemH = baseR * (0.5 + Math.random() * 0.5);
+      const stemLean = (Math.random() - 0.5) * 0.2;
+      const stemGeo = new THREE.CylinderGeometry(0.024, 0.04, stemH, 5);
+      const stemMat = new THREE.MeshStandardMaterial({ color: 0x5A4030, roughness: 0.9 });
+      const stem = new THREE.Mesh(stemGeo, stemMat);
+      stem.position.set(stemLean * stemH, stemH / 2, 0);
+      stem.rotation.z = stemLean;
+      stem.castShadow = true;
+      sg.add(stem);
+
+      if (shapeType < 0.35) {
+        // Type A: Tall upright bush (vertically stretched ellipsoid)
+        const mainGeo = new THREE.SphereGeometry(baseR, 8, 7);
+        const mainMat = new THREE.MeshStandardMaterial({ color: baseColor, roughness: 0.85 });
+        const main = new THREE.Mesh(mainGeo, mainMat);
+        main.position.set(0, stemH + baseR * 0.9, 0);
+        main.scale.set(0.75, 1.3 + Math.random() * 0.3, 0.75);
+        main.castShadow = true;
+        sg.add(main);
+        // Top tuft
+        const tR = baseR * 0.5;
+        const tGeo = new THREE.SphereGeometry(tR, 6, 5);
+        const tColor = new THREE.Color(baseColor).offsetHSL(0.02, 0, 0.06).getHex();
+        const tMat = new THREE.MeshStandardMaterial({ color: tColor, roughness: 0.85 });
+        const t = new THREE.Mesh(tGeo, tMat);
+        t.position.set(0, stemH + baseR * 1.8, 0);
+        t.scale.set(0.8, 1.0, 0.8);
+        t.castShadow = true;
+        sg.add(t);
+      } else if (shapeType < 0.65) {
+        // Type B: Wide spreading bush (horizontally stretched, multi-blob)
+        const mainGeo = new THREE.SphereGeometry(baseR * 1.1, 8, 6);
+        const mainMat = new THREE.MeshStandardMaterial({ color: baseColor, roughness: 0.85 });
+        const main = new THREE.Mesh(mainGeo, mainMat);
+        main.position.set(0, stemH + baseR * 0.55, 0);
+        main.scale.set(1.3, 0.65, 1.3);
+        main.castShadow = true;
+        sg.add(main);
+        // Irregular side blobs
+        const blobN = 2 + Math.floor(Math.random() * 2);
+        for (let j = 0; j < blobN; j++) {
+          const ba = (j / blobN) * Math.PI * 2 + Math.random() * 1.0;
+          const bd = baseR * (0.5 + Math.random() * 0.4);
+          const bR = baseR * (0.5 + Math.random() * 0.3);
+          const bColor = new THREE.Color(baseColor).offsetHSL(0, 0, -0.06 + Math.random() * 0.12).getHex();
+          const bGeo = new THREE.SphereGeometry(bR, 6, 5);
+          const bMat = new THREE.MeshStandardMaterial({ color: bColor, roughness: 0.85 });
+          const b = new THREE.Mesh(bGeo, bMat);
+          b.position.set(Math.cos(ba) * bd, stemH + baseR * 0.3 + Math.random() * baseR * 0.4, Math.sin(ba) * bd);
+          b.scale.set(1.1, 0.6 + Math.random() * 0.3, 1.1);
+          b.castShadow = true;
+          sg.add(b);
+        }
+      } else {
+        // Type C: Organic lumpy cluster (multiple irregular blobs)
+        const clusterN = 3 + Math.floor(Math.random() * 2);
+        for (let j = 0; j < clusterN; j++) {
+          const ca = (j / clusterN) * Math.PI * 2 + Math.random() * 0.8;
+          const cd = j === 0 ? 0 : baseR * (0.2 + Math.random() * 0.3);
+          const cR = baseR * (j === 0 ? (0.7 + Math.random() * 0.2) : (0.4 + Math.random() * 0.3));
+          const cy = stemH + cR * 0.6 + Math.random() * baseR * 0.3;
+          const cColor = new THREE.Color(baseColor).offsetHSL(
+            (Math.random() - 0.5) * 0.04, 0, -0.06 + Math.random() * 0.12
+          ).getHex();
+          const cGeo = new THREE.SphereGeometry(cR, 7, 5);
+          const cMat = new THREE.MeshStandardMaterial({ color: cColor, roughness: 0.85 });
+          const c = new THREE.Mesh(cGeo, cMat);
+          c.position.set(Math.cos(ca) * cd, cy, Math.sin(ca) * cd);
+          const sx = 0.8 + Math.random() * 0.4;
+          const sy = 0.6 + Math.random() * 0.5;
+          c.scale.set(sx, sy, sx);
+          c.castShadow = true;
+          sg.add(c);
+        }
+      }
+
+      sg.position.set(pos.x, h, pos.z);
+      sg.userData.isPlant = true;
+      sg.userData.swayOffset = Math.random() * Math.PI * 2;
+      sg.userData.swaySpeed = 0.4 + Math.random() * 0.3;
+      sg.userData.swayAmt = 0.01 + Math.random() * 0.012;
+      sg.userData.baseX = pos.x;
+      sg.userData.baseZ = pos.z;
+      group.add(sg);
+    });
+  }
+}
+
+function addTablePlant(group, R, h) {
+  // Small trailing plant on corner of table
+  const px = -R * 0.35, pz = R * 0.3;
+  const colors = [0x4A7A3A, 0x5A8A4A, 0x3D6830];
+  for (let i = 0; i < 4; i++) {
+    const blobGeo = new THREE.IcosahedronGeometry(0.06, 1);
+    const blobMat = new THREE.MeshStandardMaterial({
+      color: colors[i % colors.length], roughness: 0.85, metalness: 0
+    });
+    const blob = new THREE.Mesh(blobGeo, blobMat);
+    blob.position.set(px + (Math.random() - 0.5) * 0.1, h + 0.08 + i * 0.03, pz + (Math.random() - 0.5) * 0.1);
+    blob.scale.set(1, 0.6, 1);
+    blob.castShadow = true;
+    group.add(blob);
+  }
+}
+
+function createPrismMesh(moduleId, opacity) {
+  const m = MODULES[moduleId];
+  const h = m.height * SCALE;
+  const group = new THREE.Group();
+  const R = HEX_R; // no gap — seamless tiling
+  const ghost = opacity < 1;
+  const isStep = m.type === 'step';
+  const isPlanter = m.type === 'planter';
+  const isTable = m.type === 'table';
+
+  if (isStep) {
+    // Thin flat concrete hex with black hexagonal border
+    const shape = createHexShape(R);
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false });
+    const mat = new THREE.MeshStandardMaterial({
+      color: STEP_COLOR, roughness: 0.85, metalness: 0,
+      transparent: ghost, opacity,
+      polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.y = 0.005;
+    mesh.castShadow = !ghost;
+    mesh.receiveShadow = true;
+    group.add(mesh);
+
+    // Black hexagonal border on top edge for clear delineation
+    const borderMat = new THREE.MeshStandardMaterial({
+      color: 0x1A1A1A, roughness: 0.6, metalness: 0.1,
+      transparent: ghost, opacity: ghost ? 0.35 : 1,
+      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
+    });
+    const corners = getHexCorners(R);
+    const borderW = 0.025; // border width
+    const borderH = h + 0.008; // slightly taller than the step
+    for (let i = 0; i < 6; i++) {
+      const c1 = corners[i], c2 = corners[(i + 1) % 6];
+      const dx = c2.x - c1.x, dz = c2.z - c1.z;
+      const len = Math.sqrt(dx * dx + dz * dz);
+      const mx = (c1.x + c2.x) / 2, mz = (c1.z + c2.z) / 2;
+      const angle = Math.atan2(dx, dz);
+      // Outward normal
+      const nx = -dz / len, nz = dx / len;
+      // Side border bar
+      const sGeo = new THREE.BoxGeometry(borderW, borderH, len + borderW);
+      const side = new THREE.Mesh(sGeo, borderMat);
+      const faceDist = R * Math.sqrt(3) / 2;
+      side.position.set(mx + nx * borderW * 0.1, borderH / 2 + 0.005, mz + nz * borderW * 0.1);
+      side.rotation.y = angle;
+      side.castShadow = !ghost;
+      group.add(side);
+    }
+    // Top border ring (flat strips on top surface)
+    const ringMat = new THREE.MeshStandardMaterial({
+      color: 0x1A1A1A, roughness: 0.6, metalness: 0.1,
+      transparent: ghost, opacity: ghost ? 0.35 : 1,
+      polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3
+    });
+    for (let i = 0; i < 6; i++) {
+      const c1 = corners[i], c2 = corners[(i + 1) % 6];
+      const dx = c2.x - c1.x, dz = c2.z - c1.z;
+      const len = Math.sqrt(dx * dx + dz * dz);
+      const mx = (c1.x + c2.x) / 2, mz = (c1.z + c2.z) / 2;
+      const angle = Math.atan2(dx, dz);
+      const rGeo = new THREE.BoxGeometry(borderW * 1.2, 0.006, len + borderW);
+      const ring = new THREE.Mesh(rGeo, ringMat);
+      ring.position.set(mx, h + 0.01, mz);
+      ring.rotation.y = angle;
+      group.add(ring);
+    }
+  } else {
+    // ---- Wood body with steel frame ----
+    // Base fill (inner hex body, visible between plank gaps)
+    const bodyShape = createHexShape(R - FRAME_T * 0.8);
+    const bodyGeo = new THREE.ExtrudeGeometry(bodyShape, { depth: h - FRAME_T, bevelEnabled: false });
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color: 0x8B6B40, roughness: 0.8, metalness: 0,
+      transparent: ghost, opacity
+    });
+    const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+    bodyMesh.rotation.x = -Math.PI / 2;
+    bodyMesh.position.y = FRAME_T * 0.5;
+    bodyMesh.castShadow = !ghost;
+    bodyMesh.receiveShadow = true;
+    group.add(bodyMesh);
+
+    // Steel frame
+    addSteelFrame(group, R, h, ghost);
+
+    // Wood plank panels
+    addWoodPlanks(group, R, h, ghost, opacity);
+
+    // Top face
+    addTopFace(group, R, h, m.type, ghost, opacity);
+  }
+
+  return group;
+}
+
+function placeModule(q, r, moduleId) {
+  const key = hexKey(q, r);
+  removeModuleRaw(key);
+  const { x, z } = hexToWorld(q, r);
+  const group = createPrismMesh(moduleId, 1.0);
+  group.position.set(x, 0, z);
+  group.userData = { q, r, key, moduleId };
+  scene.add(group);
+  meshes[key] = group;
+  placed[key] = moduleId;
+
+  // animate pop-in
+  group.scale.set(0.01, 0.01, 0.01);
+  animateScale(group, 1.0);
+
+  // particle burst
+  const pColors = { step: 0xB8B8B0, seat: 0xD4B078, planter: 0x7BA05B, table: 0x5A9AB5 };
+  spawnParticles(x, z, pColors[MODULES[moduleId].type] || 0xD4B078);
+
+  updatePaletteBadges();
+}
+
+function removeModuleRaw(key) {
+  if (meshes[key]) {
+    const g = meshes[key];
+    animateScale(g, 0, () => { scene.remove(g); });
+    delete meshes[key];
+  }
+  delete placed[key];
+}
+
+function animateScale(obj, target, onDone) {
+  const start = { x: obj.scale.x, y: obj.scale.y, z: obj.scale.z };
+  const startTime = performance.now();
+  const dur = 280;
+  function tick() {
+    const t = Math.min(1, (performance.now() - startTime) / dur);
+    const ease = 1 - Math.pow(1 - t, 3); // ease out cubic
+    const v = start.x + (target - start.x) * ease;
+    obj.scale.set(v, v, v);
+    if (t < 1) requestAnimationFrame(tick);
+    else if (onDone) onDone();
+  }
+  tick();
+}
+
+// ============ PLACEMENT PARTICLES ============
+const particleGeo = new THREE.SphereGeometry(0.03, 6, 6);
+function spawnParticles(wx, wz, color) {
+  const count = 12;
+  for (let i = 0; i < count; i++) {
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1 });
+    const p = new THREE.Mesh(particleGeo, mat);
+    const angle = (i / count) * Math.PI * 2 + Math.random() * 0.5;
+    const speed = 0.015 + Math.random() * 0.02;
+    p.position.set(wx, 0.3 + Math.random() * 0.3, wz);
+    p.userData.vx = Math.cos(angle) * speed;
+    p.userData.vy = 0.02 + Math.random() * 0.02;
+    p.userData.vz = Math.sin(angle) * speed;
+    p.userData.life = 1.0;
+    p.userData.decay = 0.015 + Math.random() * 0.01;
+    scene.add(p);
+    particles.push(p);
+  }
+}
+
+function updateParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.position.x += p.userData.vx;
+    p.position.y += p.userData.vy;
+    p.position.z += p.userData.vz;
+    p.userData.vy -= 0.001; // gravity
+    p.userData.life -= p.userData.decay;
+    p.material.opacity = Math.max(0, p.userData.life);
+    p.scale.setScalar(p.userData.life);
+    if (p.userData.life <= 0) {
+      scene.remove(p);
+      p.material.dispose();
+      particles.splice(i, 1);
+    }
+  }
+}
+
+// ============ PLANT SWAY ============
+function updatePlantSway(time) {
+  Object.values(meshes).forEach(group => {
+    group.traverse(child => {
+      if (child.userData && child.userData.isPlant) {
+        const d = child.userData;
+        const worldPos = new THREE.Vector3();
+        group.getWorldPosition(worldPos);
+        child.position.x = d.baseX + Math.sin(time * d.swaySpeed + d.swayOffset) * d.swayAmt;
+        child.position.z = d.baseZ + Math.cos(time * d.swaySpeed * 0.7 + d.swayOffset + 1) * d.swayAmt * 0.6;
+      }
+    });
+  });
+}
+
+// ============ UNDO SYSTEM ============
+function pushUndo(action) {
+  undoStack.push(action);
+  if (undoStack.length > 50) undoStack.shift();
+  const btn = document.getElementById('undo-btn');
+  btn.disabled = false;
+  btn.style.opacity = '1';
+}
+
+window.undoAction = function() {
+  if (undoStack.length === 0) return;
+  const action = undoStack.pop();
+  if (action.type === 'place') {
+    // undo a placement = remove
+    if (meshes[action.key]) {
+      scene.remove(meshes[action.key]);
+      delete meshes[action.key];
+    }
+    delete placed[action.key];
+  } else if (action.type === 'remove') {
+    // undo a removal = re-place
+    placeModuleNoUndo(action.q, action.r, action.moduleId);
+  } else if (action.type === 'replace') {
+    // undo a replace = put back the old one
+    if (meshes[action.key]) {
+      scene.remove(meshes[action.key]);
+      delete meshes[action.key];
+    }
+    delete placed[action.key];
+    placeModuleNoUndo(action.q, action.r, action.prevModuleId);
+  }
+  updateStats();
+  updatePaletteBadges();
+  updateMinimap();
+  showToast('已撤销');
+  if (undoStack.length === 0) {
+    const btn = document.getElementById('undo-btn');
+    btn.disabled = true;
+    btn.style.opacity = '.4';
+  }
+};
+
+function placeModuleNoUndo(q, r, moduleId) {
+  const key = hexKey(q, r);
+  const { x, z } = hexToWorld(q, r);
+  const group = createPrismMesh(moduleId, 1.0);
+  group.position.set(x, 0, z);
+  group.userData = { q, r, key, moduleId };
+  scene.add(group);
+  meshes[key] = group;
+  placed[key] = moduleId;
+  group.scale.set(0.01, 0.01, 0.01);
+  animateScale(group, 1.0);
+}
+
+// ============ PALETTE BADGES ============
+function updatePaletteBadges() {
+  const counts = new Array(6).fill(0);
+  Object.values(placed).forEach(id => { counts[id]++; });
+  MODULES.forEach((m, i) => {
+    const badge = document.getElementById(`badge-${i}`);
+    if (badge) {
+      if (counts[i] > 0) {
+        badge.textContent = counts[i];
+        badge.classList.add('show');
+      } else {
+        badge.classList.remove('show');
+      }
+    }
+  });
+}
+
+// Ghost preview
+function updateGhost(q, r) {
+  if (ghostMesh) { scene.remove(ghostMesh); ghostMesh = null; }
+  if (q === null) return;
+  const key = hexKey(q, r);
+  if (placed[key] !== undefined) return;
+  const { x, z } = hexToWorld(q, r);
+  ghostMesh = createPrismMesh(selectedModule, 0.35);
+  ghostMesh.position.set(x, 0, z);
+  scene.add(ghostMesh);
+}
+
+// ============ RAYCASTING ============
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let mouseDown = false;
+let mouseMoved = false;
+
+renderer.domElement.addEventListener('pointermove', e => {
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  if (mouseDown) mouseMoved = true;
+
+  raycaster.setFromCamera(mouse, camera);
+  const targets = Object.values(gridCells).map(c => c.mesh);
+  const hits = raycaster.intersectObjects(targets);
+
+  // reset previous hover
+  if (hoverKey && gridCells[hoverKey]) {
+    gridCells[hoverKey].mesh.material.color.set(0xD4CCB8);
+    gridCells[hoverKey].mesh.material.opacity = 0.35;
+  }
+
+  if (hits.length > 0) {
+    const cell = hits[0].object;
+    const key = cell.userData.key;
+    hoverKey = key;
+    if (placed[key] === undefined) {
+      cell.material.color.set(eraserMode ? 0x999999 : fillBucketMode ? 0x4A9ADB : 0x7BA05B);
+      cell.material.opacity = 0.4;
+      hideTooltip();
+    } else {
+      cell.material.color.set(0xCC5544);
+      cell.material.opacity = 0.4;
+      const m = MODULES[placed[key]];
+      showTooltip(e.clientX, e.clientY, m.name, `${m.desc} · ${m.type === 'step' ? '踏板' : m.type === 'seat' ? '坐凳' : m.type === 'planter' ? '种植箱' : '景观桌'}`);
+    }
+    updateGhost(cell.userData.q, cell.userData.r);
+  } else {
+    hoverKey = null;
+    updateGhost(null, null);
+    hideTooltip();
+  }
+});
+
+renderer.domElement.addEventListener('pointerdown', () => { mouseDown = true; mouseMoved = false; });
+renderer.domElement.addEventListener('pointerup', e => {
+  const wasDrag = mouseMoved;
+  mouseDown = false;
+  mouseMoved = false;
+  if (wasDrag) return;
+
+  if (!hoverKey) return;
+  const cell = gridCells[hoverKey];
+  if (!cell) return;
+  const key = hoverKey;
+
+  if (e.button === 2 || eraserMode) {
+    if (placed[key] !== undefined) {
+      const prevId = placed[key];
+      pushUndo({ type: 'remove', key, q: cell.q, r: cell.r, moduleId: prevId });
+      removeModuleRaw(key);
+      showToast('已移除模块');
+      updateStats();
+      updatePaletteBadges();
+      updateMinimap();
+    }
+    if (e.button === 2) return;
+    if (eraserMode) { updateGhost(cell.q, cell.r); return; }
+  }
+
+  // Fill bucket mode
+  if (fillBucketMode && placed[key] === undefined) {
+    const count = floodFill(cell.q, cell.r, selectedModule);
+    showToast(`填充了 ${count} 个 ${MODULES[selectedModule].name}`);
+    updateGhost(cell.q, cell.r);
+    return;
+  }
+
+  if (placed[key] !== undefined) {
+    if (placed[key] === selectedModule) {
+      const prevId = placed[key];
+      pushUndo({ type: 'remove', key, q: cell.q, r: cell.r, moduleId: prevId });
+      removeModuleRaw(key);
+      showToast('已移除模块');
+    } else {
+      const prevId = placed[key];
+      pushUndo({ type: 'replace', key, q: cell.q, r: cell.r, moduleId: selectedModule, prevModuleId: prevId });
+      removeModuleRaw(key);
+      placeModule(cell.q, cell.r, selectedModule);
+      showToast(`已替换为 ${MODULES[selectedModule].name}`);
+    }
+  } else {
+    pushUndo({ type: 'place', key, q: cell.q, r: cell.r, moduleId: selectedModule });
+    placeModule(cell.q, cell.r, selectedModule);
+    showToast(`放置了 ${MODULES[selectedModule].name}`);
+
+    // Symmetry placement
+    if (symmetryMode) {
+      const syms = getSymmetricKeys(cell.q, cell.r);
+      syms.forEach(s => {
+        const sk = hexKey(s.q, s.r);
+        if (placed[sk] === undefined && gridCells[sk]) {
+          pushUndo({ type: 'place', key: sk, q: s.q, r: s.r, moduleId: selectedModule });
+          placeModule(s.q, s.r, selectedModule);
+        }
+      });
+    }
+  }
+  updateGhost(cell.q, cell.r);
+  updateStats();
+  updateMinimap();
+});
+
+renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+
+// ============ PALETTE ============
+function drawHexIcon(canvas, type) {
+  const w = canvas.width, h = canvas.height;
+  const ctx = canvas.getContext('2d');
+  const cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 2;
+
+  // hex path helper
+  function hexPath(cr, offset) {
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = (Math.PI / 3) * i - Math.PI / 6;
+      const px = cx + (cr) * Math.cos(a);
+      const py = cy + (cr) * Math.sin(a);
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+  }
+
+  // Frame border
+  hexPath(r);
+  ctx.fillStyle = type === 'step' ? '#1A1A1A' : '#3D3530';
+  ctx.fill();
+
+  // Inner fill
+  hexPath(r - (type === 'step' ? 3.5 : 2.5));
+  const fills = {
+    step:    '#B8B8B0',
+    seat:    '#D4B078',
+    planter: '#7BA832',
+    table:   '#D4B078'
+  };
+  ctx.fillStyle = fills[type] || '#D4B078';
+  ctx.fill();
+
+  // Planter: soil + tiny green dots
+  if (type === 'planter') {
+    for (let i = 0; i < 12; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const d = Math.random() * (r - 6);
+      ctx.fillStyle = ['#6B8E4A', '#8866AA', '#A04020', '#557744'][i % 4];
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(a) * d, cy + Math.sin(a) * d, 2 + Math.random() * 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Table: clean wood grain lines
+  if (type === 'table') {
+    ctx.strokeStyle = '#C8A060';
+    ctx.lineWidth = 0.8;
+    ctx.globalAlpha = 0.5;
+    for (let i = -3; i <= 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx - r * 0.6, cy + i * 4);
+      ctx.lineTo(cx + r * 0.6, cy + i * 4);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+function buildPalette() {
+  const pal = document.getElementById('palette');
+  MODULES.forEach((m, i) => {
+    const item = document.createElement('div');
+    item.className = 'pal-item' + (i === 0 ? ' selected' : '');
+    item.onclick = () => {
+      selectedModule = i;
+      document.querySelectorAll('.pal-item').forEach((el, j) => el.classList.toggle('selected', j === i));
+      if (hoverKey && gridCells[hoverKey]) updateGhost(gridCells[hoverKey].q, gridCells[hoverKey].r);
+    };
+    const c = document.createElement('canvas');
+    c.width = 36; c.height = 36;
+    c.style.width = '36px'; c.style.height = '36px'; c.style.flexShrink = '0';
+    drawHexIcon(c, m.type);
+    item.appendChild(c);
+    const badge = document.createElement('span');
+    badge.className = 'pal-badge';
+    badge.id = `badge-${i}`;
+    item.appendChild(badge);
+    const info = document.createElement('div');
+    info.className = 'pal-info';
+    info.innerHTML = `<span class="name">${m.name}</span><span class="dim">${m.desc} · 六边形 ${HEX_SIDE}mm</span>`;
+    item.appendChild(info);
+    pal.appendChild(item);
+  });
+}
+
+window.addEventListener('keydown', e => {
+  const n = parseInt(e.key);
+  if (n >= 1 && n <= 6) {
+    selectedModule = n - 1;
+    document.querySelectorAll('.pal-item').forEach((el, j) => el.classList.toggle('selected', j === n - 1));
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+    e.preventDefault();
+    window.undoAction();
+  }
+});
+
+// ============ STATS ============
+function buildStats() {
+  const container = document.getElementById('stat-rows');
+  const statColors = {
+    step: '#C5C5C0', seat: '#C49A68', planter: '#9AB060', table: '#6B4A30'
+  };
+  MODULES.forEach((m, i) => {
+    const row = document.createElement('div');
+    row.className = 'stat-row';
+    const sc = statColors[m.type] || '#C49A68';
+    row.innerHTML = `<div class="stat-color" style="background:${sc}"></div>
+      <span class="stat-name">${m.name}</span><span class="stat-count" id="sc-${i}">0</span>`;
+    container.appendChild(row);
+  });
+}
+
+function updateStats() {
+  const counts = new Array(6).fill(0);
+  let total = 0;
+  Object.values(placed).forEach(id => { counts[id]++; total++; });
+  MODULES.forEach((m, i) => { document.getElementById(`sc-${i}`).textContent = counts[i]; });
+  const area = total * HEX_AREA_MM;
+  const areaEl = document.querySelector('#total-area .value');
+  if (area > 1e6) {
+    areaEl.textContent = (area / 1e6).toFixed(2);
+    document.querySelector('#total-area .unit').textContent = '平方米';
+  } else {
+    areaEl.textContent = Math.round(area).toLocaleString();
+    document.querySelector('#total-area .unit').textContent = '平方毫米';
+  }
+  // Module prices (hidden per-unit, only total shown)
+  const prices = [1074, 2137, 2474, 2776, 3159, 3571];
+  let totalPrice = 0;
+  counts.forEach((c, i) => { totalPrice += c * prices[i]; });
+  const priceEl = document.querySelector('#total-price .value');
+  priceEl.textContent = '¥' + totalPrice.toLocaleString();
+}
+
+// ============ ACTIONS ============
+window.clearCanvas = function() {
+  Object.keys(meshes).forEach(key => {
+    scene.remove(meshes[key]);
+  });
+  meshes = {};
+  placed = {};
+  undoStack = [];
+  const btn = document.getElementById('undo-btn');
+  btn.disabled = true;
+  btn.style.opacity = '.4';
+  updateStats();
+  updatePaletteBadges();
+  updateMinimap();
+  showToast('画布已清空');
+};
+
+window.exportDesign = function() {
+  const data = {
+    modules: MODULES.map(m => ({ name: m.name, height: m.height })),
+    hexSide: HEX_SIDE, placed: {}
+  };
+  Object.entries(placed).forEach(([key, id]) => {
+    data.placed[key] = { module: MODULES[id].name, height: MODULES[id].height };
+  });
+  const counts = new Array(6).fill(0);
+  Object.values(placed).forEach(id => counts[id]++);
+  data.summary = { totalModules: Object.keys(placed).length, counts: {} };
+  MODULES.forEach((m, i) => { if (counts[i]) data.summary.counts[m.name] = counts[i]; });
+  data.summary.totalArea_mm2 = Object.keys(placed).length * HEX_AREA_MM;
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '花园设计_' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  showToast('设计方案已导出');
+};
+
+window.saveScreenshot = function() {
+  // render one clean frame (hide hover effects and leaves)
+  const prevHover = hoverKey;
+  hoverKey = null;
+  if (ghostMesh) { scene.remove(ghostMesh); ghostMesh = null; }
+  if (prevHover && gridCells[prevHover]) {
+    gridCells[prevHover].mesh.material.color.set(0xD4CCB8);
+    gridCells[prevHover].mesh.material.opacity = 0.35;
+  }
+  // Temporarily hide leaf particles
+  leafParticles.forEach(l => { l.visible = false; });
+  renderer.render(scene, camera);
+  leafParticles.forEach(l => { l.visible = true; });
+
+  const dataURL = renderer.domElement.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = dataURL;
+  a.download = '花园设计截图_' + new Date().toISOString().slice(0, 10) + '.png';
+  a.click();
+  showToast('截图已保存');
+};
+
+window.randomFill = function() {
+  // Clear first
+  Object.keys(meshes).forEach(key => { scene.remove(meshes[key]); });
+  meshes = {};
+  placed = {};
+  undoStack = [];
+  document.getElementById('undo-btn').disabled = true;
+  document.getElementById('undo-btn').style.opacity = '.4';
+
+  // Collect all grid keys
+  const keys = Object.keys(gridCells);
+  // Pick a random subset (30-60% of grid)
+  const fillCount = Math.floor(keys.length * (0.3 + Math.random() * 0.3));
+  const shuffled = keys.sort(() => Math.random() - 0.5).slice(0, fillCount);
+
+  // Weight distribution: more stepping boards and planters, fewer tables
+  const weights = [3, 2, 3, 2, 3, 1]; // step, low seat, low planter, high seat, high planter, table
+  const totalW = weights.reduce((a, b) => a + b, 0);
+  function pickModule() {
+    let r = Math.random() * totalW;
+    for (let i = 0; i < weights.length; i++) {
+      r -= weights[i];
+      if (r <= 0) return i;
+    }
+    return 0;
+  }
+
+  // Stagger placement for cascade animation effect
+  shuffled.forEach((key, idx) => {
+    const cell = gridCells[key];
+    const mid = pickModule();
+    setTimeout(() => {
+      placeModule(cell.q, cell.r, mid);
+      updateStats();
+      updatePaletteBadges();
+    }, idx * 40);
+  });
+
+  setTimeout(() => {
+    updateStats();
+    updatePaletteBadges();
+    updateMinimap();
+  }, shuffled.length * 40 + 100);
+
+  showToast(`随机生成了 ${fillCount} 个模块`);
+};
+
+// ============ TOOLTIP ============
+const tooltipEl = document.getElementById('tooltip');
+function showTooltip(x, y, name, desc) {
+  tooltipEl.innerHTML = `<div class="tt-name">${name}</div><div class="tt-dim">${desc}</div>`;
+  tooltipEl.style.left = x + 'px';
+  tooltipEl.style.top = (y - 12) + 'px';
+  tooltipEl.classList.add('show');
+}
+function hideTooltip() {
+  tooltipEl.classList.remove('show');
+}
+
+// ============ DAY / NIGHT TOGGLE ============
+let isNight = false;
+window.toggleDayNight = function() {
+  isNight = !isNight;
+  const btn = document.getElementById('dn-btn');
+  if (isNight) {
+    // Night mode
+    scene.background.set(0x1A1E2E);
+    scene.fog.color.set(0x1A1E2E);
+    ambLight.intensity = 0.15;
+    hemiLight.intensity = 0.1;
+    dirLight.intensity = 0.3;
+    dirLight.color.set(0x8899CC);
+    // Moonlight from opposite side
+    dirLight.position.set(-4, 10, -3);
+    btn.textContent = '月光';
+  } else {
+    // Day mode
+    scene.background.set(0xF5F0E6);
+    scene.fog.color.set(0xF5F0E6);
+    ambLight.intensity = 0.6;
+    hemiLight.intensity = 0.5;
+    dirLight.intensity = 1.4;
+    dirLight.color.set(0xFFF8EE);
+    dirLight.position.set(6, 12, 4);
+    btn.textContent = '日光';
+  }
+};
+
+// ============ AMBIENT LEAF PARTICLES ============
+const leafParticles = [];
+const leafGeo = new THREE.PlaneGeometry(0.06, 0.04);
+const leafColors = [0x7BA05B, 0x5A8A4A, 0x9AB060, 0xC49A68];
+function initLeafParticles() {
+  for (let i = 0; i < 20; i++) {
+    const color = leafColors[Math.floor(Math.random() * leafColors.length)];
+    const mat = new THREE.MeshBasicMaterial({
+      color, transparent: true, opacity: 0.6 + Math.random() * 0.3,
+      side: THREE.DoubleSide
+    });
+    const leaf = new THREE.Mesh(leafGeo, mat);
+    resetLeaf(leaf);
+    scene.add(leaf);
+    leafParticles.push(leaf);
+  }
+}
+
+function resetLeaf(leaf) {
+  const range = 10;
+  leaf.position.set(
+    (Math.random() - 0.5) * range * 2,
+    3 + Math.random() * 6,
+    (Math.random() - 0.5) * range * 2
+  );
+  leaf.userData.vx = (Math.random() - 0.5) * 0.008;
+  leaf.userData.vy = -0.003 - Math.random() * 0.005;
+  leaf.userData.vz = (Math.random() - 0.5) * 0.008;
+  leaf.userData.spin = (Math.random() - 0.5) * 0.04;
+  leaf.userData.wobble = Math.random() * Math.PI * 2;
+  leaf.userData.wobbleSpeed = 1.5 + Math.random() * 1.5;
+}
+
+function updateLeafParticles(time) {
+  leafParticles.forEach(leaf => {
+    leaf.position.x += leaf.userData.vx + Math.sin(time * leaf.userData.wobbleSpeed + leaf.userData.wobble) * 0.003;
+    leaf.position.y += leaf.userData.vy;
+    leaf.position.z += leaf.userData.vz + Math.cos(time * leaf.userData.wobbleSpeed * 0.8 + leaf.userData.wobble) * 0.002;
+    leaf.rotation.x += leaf.userData.spin;
+    leaf.rotation.z += leaf.userData.spin * 0.7;
+    if (leaf.position.y < -0.5) resetLeaf(leaf);
+  });
+}
+
+// ============ SAVE / LOAD (localStorage) ============
+window.saveToLocal = function() {
+  const data = {};
+  Object.entries(placed).forEach(([key, id]) => { data[key] = id; });
+  try {
+    localStorage.setItem('hex-garden-save', JSON.stringify(data));
+    showToast(`方案已保存 (${Object.keys(data).length} 个模块)`);
+  } catch(e) {
+    showToast('保存失败');
+  }
+};
+
+window.loadFromLocal = function() {
+  try {
+    const raw = localStorage.getItem('hex-garden-save');
+    if (!raw) { showToast('没有找到已保存的方案'); return; }
+    const data = JSON.parse(raw);
+
+    // Clear current
+    Object.keys(meshes).forEach(key => { scene.remove(meshes[key]); });
+    meshes = {};
+    placed = {};
+    undoStack = [];
+    document.getElementById('undo-btn').disabled = true;
+    document.getElementById('undo-btn').style.opacity = '.4';
+
+    // Restore with stagger
+    const entries = Object.entries(data);
+    entries.forEach(([key, moduleId], idx) => {
+      const cell = gridCells[key];
+      if (!cell) return;
+      setTimeout(() => {
+        placeModule(cell.q, cell.r, moduleId);
+        updateStats();
+        updatePaletteBadges();
+      }, idx * 30);
+    });
+
+    setTimeout(() => {
+      updateStats();
+      updatePaletteBadges();
+      updateMinimap();
+    }, entries.length * 30 + 100);
+
+    showToast(`已加载 ${entries.length} 个模块`);
+  } catch(e) {
+    showToast('加载失败');
+  }
+};
+
+// ============ MINIMAP ============
+const minimapCanvas = document.getElementById('minimap-canvas');
+const mctx = minimapCanvas.getContext('2d');
+const minimapColors = {
+  step: '#C5C5C0', seat: '#C49A68', planter: '#6B8E4A', table: '#6B4A30'
+};
+
+function updateMinimap() {
+  const w = minimapCanvas.width, h = minimapCanvas.height;
+  mctx.clearRect(0, 0, w, h);
+  const cx = w / 2, cy = h / 2;
+  const scale = w / ((GRID_RADIUS * 2 + 2) * 2);
+  const R = scale * 0.9;
+
+  function drawHex(px, py, r, fill, stroke) {
+    mctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = (Math.PI / 3) * i - Math.PI / 6;
+      const hx = px + r * Math.cos(a);
+      const hy = py + r * Math.sin(a);
+      if (i === 0) mctx.moveTo(hx, hy); else mctx.lineTo(hx, hy);
+    }
+    mctx.closePath();
+    if (fill) { mctx.fillStyle = fill; mctx.fill(); }
+    if (stroke) { mctx.strokeStyle = stroke; mctx.lineWidth = 0.5; mctx.stroke(); }
+  }
+
+  // Draw grid cells
+  Object.entries(gridCells).forEach(([key, cell]) => {
+    const px = cx + (cell.q + cell.r / 2) * R * Math.sqrt(3);
+    const py = cy + cell.r * R * 1.5;
+    if (placed[key] !== undefined) {
+      const m = MODULES[placed[key]];
+      const c = minimapColors[m.type] || '#C49A68';
+      drawHex(px, py, R * 0.95, c, null);
+      // Height indicator: darker center dot for taller modules
+      const hRatio = m.height / 780;
+      mctx.fillStyle = `rgba(0,0,0,${hRatio * 0.3})`;
+      mctx.beginPath();
+      mctx.arc(px, py, R * 0.25 * hRatio, 0, Math.PI * 2);
+      mctx.fill();
+    } else {
+      drawHex(px, py, R * 0.85, 'rgba(212,204,184,0.3)', 'rgba(196,184,162,0.4)');
+    }
+  });
+}
+
+// ============ ERASER / FILL / SYMMETRY MODES ============
+window.toggleEraser = function() {
+  eraserMode = !eraserMode;
+  if (eraserMode) fillBucketMode = false;
+  document.getElementById('eraser-btn').classList.toggle('active', eraserMode);
+  document.getElementById('fill-btn').classList.toggle('active', fillBucketMode);
+  if (eraserMode) showToast('橡皮擦模式：点击移除模块');
+};
+
+window.toggleFillBucket = function() {
+  fillBucketMode = !fillBucketMode;
+  if (fillBucketMode) eraserMode = false;
+  document.getElementById('fill-btn').classList.toggle('active', fillBucketMode);
+  document.getElementById('eraser-btn').classList.toggle('active', eraserMode);
+  if (fillBucketMode) showToast('填充模式：点击空位填充相连区域');
+};
+
+window.toggleSymmetry = function() {
+  symmetryMode = !symmetryMode;
+  document.getElementById('sym-btn').classList.toggle('active', symmetryMode);
+  if (symmetryMode) showToast('对称模式：放置将镜像到对称位置');
+};
+
+function getHexNeighbors(q, r) {
+  return [
+    { q: q+1, r: r }, { q: q-1, r: r },
+    { q: q, r: r+1 }, { q: q, r: r-1 },
+    { q: q+1, r: r-1 }, { q: q-1, r: r+1 },
+  ];
+}
+
+function floodFill(startQ, startR, moduleId) {
+  const visited = new Set();
+  const queue = [{ q: startQ, r: startR }];
+  const toFill = [];
+  const maxFill = 30; // safety limit
+
+  while (queue.length > 0 && toFill.length < maxFill) {
+    const { q, r } = queue.shift();
+    const key = hexKey(q, r);
+    if (visited.has(key)) continue;
+    visited.add(key);
+    if (!isInGrid(q, r)) continue;
+    if (!gridCells[key]) continue;
+    if (placed[key] !== undefined) continue;
+
+    toFill.push({ q, r, key });
+    const neighbors = getHexNeighbors(q, r);
+    neighbors.forEach(n => {
+      const nk = hexKey(n.q, n.r);
+      if (!visited.has(nk)) queue.push(n);
+    });
+  }
+
+  // Stagger placement
+  toFill.forEach(({ q, r, key }, idx) => {
+    setTimeout(() => {
+      if (placed[key] === undefined) {
+        pushUndo({ type: 'place', key, q, r, moduleId });
+        placeModule(q, r, moduleId);
+        updateStats();
+        updatePaletteBadges();
+      }
+    }, idx * 50);
+  });
+
+  setTimeout(() => {
+    updateStats();
+    updatePaletteBadges();
+    updateMinimap();
+  }, toFill.length * 50 + 100);
+
+  return toFill.length;
+}
+
+function getSymmetricKeys(q, r) {
+  // 6-fold rotational symmetry for hex grid
+  return [
+    { q: -q - r, r: q },   // 60°
+    { q: r, r: -q - r },   // 120°
+    { q: -q, r: -r },      // 180°
+    { q: q + r, r: -q },   // 240°
+    { q: -r, r: q + r },   // 300°
+  ].filter(p => isInGrid(p.q, p.r));
+}
+
+// ============ CAMERA PRESETS ============
+function animateCamera(targetPos, targetLookAt, dur) {
+  const startPos = camera.position.clone();
+  const startTarget = controls.target.clone();
+  const endPos = new THREE.Vector3(targetPos.x, targetPos.y, targetPos.z);
+  const endTarget = new THREE.Vector3(targetLookAt.x, targetLookAt.y, targetLookAt.z);
+  const startTime = performance.now();
+  dur = dur || 600;
+
+  function tick() {
+    const t = Math.min(1, (performance.now() - startTime) / dur);
+    const ease = 1 - Math.pow(1 - t, 3);
+    camera.position.lerpVectors(startPos, endPos, ease);
+    controls.target.lerpVectors(startTarget, endTarget, ease);
+    controls.update();
+    if (t < 1) requestAnimationFrame(tick);
+  }
+  tick();
+}
+
+window.setCameraView = function(view) {
+  const center = { x: 0, y: 0.5, z: 0 };
+  switch(view) {
+    case 'iso':
+      animateCamera({ x: 8, y: 10, z: 8 }, center);
+      break;
+    case 'top':
+      animateCamera({ x: 0, y: 18, z: 0.01 }, center);
+      break;
+    case 'front':
+      animateCamera({ x: 0, y: 4, z: 16 }, center);
+      break;
+    case 'side':
+      animateCamera({ x: 16, y: 4, z: 0 }, center);
+      break;
+  }
+};
+
+// ============ TOAST ============
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 1600);
+}
+
+// ============ ANIMATE ============
+function animate() {
+  requestAnimationFrame(animate);
+  const time = performance.now() * 0.001;
+  controls.update();
+  updatePlantSway(time);
+  updateParticles();
+  updateLeafParticles(time);
+  renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+  camera.aspect = wrap.clientWidth / wrap.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+});
+
+// ============ INIT ============
+buildPalette();
+buildStats();
+initLeafParticles();
+updateMinimap();
+animate();
+
+// Auto-load saved design if exists
+if (localStorage.getItem('hex-garden-save')) {
+  setTimeout(() => {
+    window.loadFromLocal();
+  }, 500);
+}
+</script>
+
+
+</body></html>
