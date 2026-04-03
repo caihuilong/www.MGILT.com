@@ -33,10 +33,49 @@
 ### 模块系统页面
 - Hero 区域：The System / 六边形模块化系统
 - 对比表格：传统搭建 vs MGILT
-- 六大核心模块展示（vanilla JS）
+- 六大核心模块展示
 - 四步构建流程：步骤和图片高度统一，图片淡入淡出切换
 - 六边形动画区域延伸至页面左右边缘
 - 技术规格三列参数列表居中显示
+
+### 编辑器 (MGILT 空间设计台)
+
+#### 基础功能
+- 标题：MGILT 空间设计台
+- 六大基础模块可放置在六边形网格上
+- 左键点击放置模块，右键点击移除模块
+- Ctrl+Z 撤销功能
+- 日光/夜景切换
+
+#### 推荐组合
+- 下拉菜单提供6种预设场景：咖啡店、餐厅外摆、办公交流、学校庭院、休闲 lounge、零售店铺
+- 选择后自动生成对应模块布局
+
+#### 场景元素功能
+- 独立的面板区域，支持展开/收起
+- 7种场景元素类型：
+  - 阳伞（models/阳伞2.glb）
+  - 四人桌椅组合（models/四人桌椅组合.glb）
+  - 单人高座椅组合（models/单人高座椅组合.glb）
+  - 小圆桌（models/小圆桌.glb）
+  - 商务人01（models/商务人01.glb）
+  - 商务人02（models/商务人02.glb）
+  - 商务人03（models/商务人03.glb）
+- 支持：放置、选择、拖拽移动、右键删除、旋转（R键或↻按钮）
+- 元素可放置在地面或模块表面上
+
+#### 鼠标操作
+- 中键按住：旋转视图
+- 右键按住：平移视图
+- 滚轮：放大/缩小
+- ESC：退出当前选中状态和预览
+
+#### 交互逻辑
+- 默认情况：不显示模块预览
+- 选择模块后：显示模块预览
+- 选择场景元素类型后：显示元素预览
+- 放置模式：左键点击放置
+- 选择模式：左键点击选中，右键删除，拖拽移动
 
 ### 用户中心 (我的设计页面)
 - 头像：默认显示用户名首字母，点击可上传自定义图片
@@ -53,12 +92,6 @@
 - 手机验证码登录（mock code: 1234）
 - 手机快速注册
 - localStorage 存储：session、users、designs
-
-### 编辑器 (设计你的MGILT)
-- 标题：MGILT 空间设计台
-- 已移除：橡皮擦按钮、填充按钮、对称按钮
-- 新增"推荐组合"下拉菜单
-- 保存/更新功能：自定义模态框（居中显示）
 
 ### 合作伙伴页面
 - Hero 区域：flat-topped 六边形网格背景
@@ -81,6 +114,13 @@ window.doSaveDesign = doSaveDesign;       // 执行保存/更新
 window.initCasesNew = initCasesNew;       // 空间灵感初始化
 window.filterCasesNew = filterCasesNew;   // 空间灵感筛选
 window.switchCaseImg = switchCaseImg;     // 图片切换
+window.applyRecommend = applyRecommend;   // 应用推荐组合
+window.toggleModulePalette = toggleModulePalette;       // 展开/收起模块面板
+window.toggleSceneElementPalette = toggleSceneElementPalette; // 展开/收起场景元素面板
+window.selectSceneElementType = selectSceneElementType; // 选择场景元素类型
+window.rotateSelectedSceneElement = rotateSelectedSceneElement; // 旋转选中元素
+window.clearAllSceneElements = clearAllSceneElements; // 清空所有场景元素
+window.selectModule3D = selectModule3D; // 选择模块
 ```
 
 ### localStorage 数据结构
@@ -93,38 +133,59 @@ window.switchCaseImg = switchCaseImg;     // 图片切换
 - 空间灵感案例图片：`images/project1.jpg` ~ `images/project4-2.jpg`
 - 模块系统模块图片：`images/module-*.jpg/png`
 
+### Three.js 模型加载
+- 使用 CDN 加载 Three.js 及 GLTFLoader
+- 场景元素模型放在 `models/` 目录下
+
 ---
 
 ## 下一步计划
 
-### 1. 清理调试代码
+### 1. 头像上传功能（测试中）
+- **问题**：点击头像后文件选择器无法弹出
+- **位置**：`index.html` 第 1234 行
+- **相关函数**：`handleDashAvatarChange`
+
+### 2. 用户名编辑优化
+- 确保点击用户名能正常变成输入框并保存
+
+### 3. 更新功能测试
+- 确认从"我的设计"编辑后能正确更新
+- `completeDesignLoad` 后 `pendingDesignLoad` 被设为 null 已用 `window.currentEditingDesignId` 修复
+
+### 4. 清理调试代码
 - 移除所有 `console.log` 调试语句
 
-### 2. 浏览器兼容性测试
+### 5. 浏览器兼容性测试
 - 确保功能在各浏览器（Chrome、Firefox、Safari、Edge）正常工作
 
-### 3. 合作伙伴页面光效优化（如需）
-- 当前光效：从中心向外扩散的边框变亮效果（8秒一轮）
-- 可调整项：扩散速度、光效亮度、光效颜色
+### 6. 性能优化
+- 优化3D渲染性能
+- 考虑添加模块实例化
 
-### 4. 其他可能的需求
-- 性能优化
-- SEO 优化
-- 移动端适配优化
+### 7. 移动端适配
+- 编辑器在移动端的操作体验优化
 
 ---
 
 ## 最近修改记录
 
-### 2026-04-02 (本次会话)
+### 2026-04-03
+- 移除右侧场景元素区块，保留左侧面板
+- 添加场景元素拖拽移动功能（可拾取网格面和模块表面）
+- 修改鼠标操作：中键旋转、右键平移
+- 选择模式下隐藏模块预览
+- ESC 退出当前选中状态和预览
+- 缩放调整：所有场景元素缩放改为 2
+- 添加商务人01/02/03 模型
+- 模块面板缩略图改为对应颜色的正六边形
+
+### 2026-04-02
 - 修复首页 Hero 动画照片（替换为本地图片 images/首页01~03）
 - 首页左下角改为显示北京实时日期
 - 合作伙伴页面：flat-topped 六边形网格居中显示
 - 合作伙伴页面：添加从中心向外扩散的边框光效
-
-### 2026-04-01
-- 完成空间灵感页面新设计（参考 mgilt-showcase）
-- 下载 6 张真实图片到本地 images/ 文件夹
-- 实现标签筛选功能（按 Category 过滤）
-- 修复模块系统六边形动画（逐批显现效果）
-- 空间灵感页面文字区域改为毛玻璃效果
+- 实现场景元素功能：阳伞模型的加载、放置、选择、旋转、删除
+- 重构左侧边栏：模块面板和场景元素面板均改为可折叠的下拉样式
+- 将6个模块选择改为下拉选择式
+- 添加多种场景元素类型定义（桌椅组合、小圆桌、长椅、景观灯、绿植）

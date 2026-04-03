@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MGILT 麦吉蓝图 — 模块化生态空间</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=Noto+Sans+SC:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=Noto+Sans+SC:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@300;400&family=Source+Han+Sans+CN:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="js/gsap.min.js"></script>
 <script src="js/ScrollTrigger.min.js"></script>
 <script type="importmap">
@@ -22,7 +22,7 @@
 :root{
 --black:#0a0a0a;--white:#fafaf8;--sage:#7A9E7E;--sage-light:#e8f0e9;--beige:#BFA27A;--beige-light:#f5f0e8;
 --gray-100:#f5f5f3;--gray-200:#e8e8e5;--gray-300:#d1d1cd;--gray-400:#a0a09b;--gray-500:#6b6b66;--gray-600:#3d3d3a;
---font-display:'DM Sans',sans-serif;--font-body:'Noto Sans SC','DM Sans',sans-serif;
+--font-display:'Source Han Sans CN','DM Sans',sans-serif;--font-body:'Source Han Sans CN','DM Sans',sans-serif;
 --nav-h:64px;--page-pad:clamp(24px,5vw,80px);
 --ease-out:cubic-bezier(0.16,1,0.3,1);--ease-in-out:cubic-bezier(0.65,0,0.35,1);
 }
@@ -66,6 +66,12 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 .mobile-toggle{display:none;flex-direction:column;gap:5px;width:24px;cursor:pointer}
 .mobile-toggle span{display:block;height:1.5px;background:var(--black);transition:all .3s}
 .mobile-menu{display:none;position:fixed;inset:0;top:var(--nav-h);background:var(--white);z-index:999;padding:40px var(--page-pad);flex-direction:column;gap:24px}
+
+/* === BACK TO TOP BUTTON === */
+.back-to-top{position:fixed;bottom:32px;right:32px;width:48px;height:48px;background:var(--black);color:var(--white);border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:all .3s;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.back-to-top.visible{opacity:1;visibility:visible}
+.back-to-top:hover{background:var(--sage);transform:translateY(-4px)}
+.back-to-top svg{width:20px;height:20px}
 .mobile-menu.open{display:flex}
 .mobile-menu a{font-size:24px;font-weight:300;font-family:var(--font-display)}
 
@@ -88,7 +94,7 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 
 /* === SECTION TITLES === */
 .section-label{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--gray-400);margin-bottom:16px;font-family:var(--font-display)}
-.section-title{font-family:var(--font-display);font-size:clamp(28px,4vw,48px);font-weight:300;line-height:1.2;margin-bottom:24px;letter-spacing:-0.5px}
+.section-title{font-family:var(--font-display);font-size:24px;font-weight:300;line-height:1.2;margin-bottom:24px;letter-spacing:-0.5px}
 .section-subtitle{font-size:15px;color:var(--gray-500);max-width:560px;line-height:1.8;font-weight:300}
 
 /* === FOOTER === */
@@ -566,15 +572,43 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 .dropdown-item{padding:10px 16px;font-size:12px;cursor:pointer;transition:background .2s}
 .dropdown-item:hover{background:var(--gray-100)}
 .preview-hint{font-size:11px;color:var(--sage);padding:4px 12px;background:var(--sage-light);border-radius:12px;margin-left:8px;font-weight:500}
-.editor-toolbar-title{font-family:var(--font-display);font-size:14px;letter-spacing:1px}
+.editor-toolbar-title{font-family:var(--font-display);font-size:14px;letter-spacing:1px;text-align:center}
 .editor-body{display:flex;flex:1;overflow:hidden}
-.editor-sidebar{width:220px;border-right:1px solid var(--gray-200);padding:24px;overflow-y:auto;flex-shrink:0}
-.editor-sidebar h3{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gray-400);margin-bottom:16px;font-family:var(--font-display)}
-.module-palette{display:flex;flex-direction:column;gap:8px}
+.editor-sidebar{width:220px;border-right:1px solid var(--gray-200);padding:0;overflow-y:auto;flex-shrink:0}
+.editor-sidebar h3{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gray-400);margin-bottom:0;font-family:var(--font-display);padding:16px 20px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none}
+.editor-sidebar h3:hover{background:var(--gray-100)}
+.editor-sidebar h3::after{content:'▲';font-size:10px;transition:transform 0.2s}
+.editor-sidebar h3.collapsed::after{transform:rotate(180deg)}
+.module-palette{display:flex;flex-direction:column;gap:8px;padding:0 20px;max-height:2000px;overflow:hidden;transition:max-height 0.3s, padding 0.3s}
+.module-palette.collapsed{max-height:0;padding:0 20px}
+.scene-element-palette{display:flex;flex-direction:column;gap:8px;padding:0 20px;max-height:2000px;overflow:hidden;transition:max-height 0.3s, padding 0.3s}
+.scene-element-palette.collapsed{max-height:0;padding:0 20px}
+.scene-element-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border:2px solid transparent;cursor:pointer;transition:all .3s;border-radius:2px}
+.scene-element-item:hover{background:var(--gray-100)}
+.scene-element-item.selected{border-color:var(--sage);background:var(--sage-light)}
+.scene-element-icon{width:32px;height:32px;background:var(--gray-100);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:18px}
 .palette-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border:2px solid transparent;cursor:pointer;transition:all .3s;border-radius:2px}
 .palette-item:hover{background:var(--gray-100)}
 .palette-item.selected{border-color:var(--black);background:var(--gray-100)}
-.palette-hex{width:32px;height:28px;clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);flex-shrink:0}
+/* 六边形缩略图 */
+.module-thumbnail{
+  width:36px;
+  height:36px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+}
+.module-hex{
+  width:32px;
+  height:28px;
+  clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+}
+
+/* 场景元素按钮选中状态 */
+#btn-umbrella.active{background:var(--sage);border-color:var(--sage);transform:scale(1.05)}
+#btn-umbrella:hover{background:var(--gray-100)}
+#btn-select-element.active{background:var(--sage);color:white;border-color:var(--sage)}
 .palette-info{font-size:12px;font-weight:300;position:relative}
 .palette-info span{display:block;font-size:10px;color:var(--gray-400);margin-top:2px}
 .pal-badge{position:absolute;top:-8px;right:-8px;background:var(--sage);color:white;font-size:10px;font-weight:700;min-width:16px;height:16px;line-height:16px;text-align:center;border-radius:8px;padding:0 4px;display:none}
@@ -845,7 +879,7 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 .opp-card p{font-size:14px;color:var(--gray-500);line-height:1.7}
 .opp-stat{font-family:var(--font-display);font-size:36px;color:var(--sage);margin-bottom:8px;font-weight:300}
 
-.partner-advantages{padding:120px 0;background:var(--gray-100)}
+.partner-advantages{padding:120px 0;background:#FAFAF8}
 .adv-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:32px;margin-top:64px}
 .adv-card{background:var(--white);padding:40px 28px;text-align:center;transition:all .4s var(--ease-out)}
 .adv-card:hover{box-shadow:0 16px 48px rgba(0,0,0,.06)}
@@ -877,11 +911,12 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 .support-card p{font-size:13px;color:var(--gray-500);line-height:1.6}
 
 .partner-cta{padding:120px 0;background:linear-gradient(180deg,var(--black) 0%,var(--sage) 100%);text-align:center;color:var(--white)}
-.partner-cta h2{font-family:var(--font-display);font-size:clamp(28px,4vw,48px);font-weight:300;margin-bottom:24px;letter-spacing:2px}
+.partner-cta h2{font-family:var(--font-display);font-size:24px;font-weight:300;margin-bottom:24px;letter-spacing:2px}
 .partner-cta p{font-size:16px;color:rgba(255,255,255,.7);max-width:500px;margin:0 auto 40px;line-height:1.8}
 .partner-cta .btn{background:var(--white);color:var(--black);border-color:var(--white);font-size:14px;padding:16px 48px}
 .partner-cta .btn:hover{background:transparent;color:var(--white)}
 .partner-cta-note{font-size:13px;color:rgba(255,255,255,.5);margin-top:24px}
+.partner-contact-section{background:#FAFAF8;padding:120px 0}
 
 /* === CONTACT PAGE === */
 .contact-page{padding:calc(var(--nav-h) + 80px) 0 100px}
@@ -891,6 +926,8 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 .contact-info-block{margin-bottom:32px}
 .contact-info-block h4{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:12px;font-family:var(--font-display)}
 .contact-info-block p{font-size:14px;color:var(--gray-500);line-height:1.8}
+.contact-qr-codes{display:flex;gap:24px;margin-top:24px}
+.qr-code{width:100px;height:100px;border:1px solid var(--gray-200)}
 
 /* === ANIMATIONS === */
 .reveal{opacity:0;transform:translateY(30px);transition:all .8s var(--ease-out)}
@@ -1054,7 +1091,7 @@ input,select,textarea{font-family:inherit;font-size:inherit}
   <!-- Hero 区域 -->
   <div style="padding-top:164px;padding-bottom:60px;text-align:center;max-width:1320px;margin:0 auto;padding-left:var(--page-pad);padding-right:var(--page-pad)">
     <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#a0a09b;margin-bottom:16px;font-weight:300">The System</div>
-    <h1 style="font-size:clamp(28px,4vw,48px);font-weight:300;line-height:1.2;letter-spacing:-0.5px;color:#1A1A1A;margin-bottom:24px">六边形模块化系统</h1>
+    <h1 style="font-size:36px;font-weight:300;line-height:1.2;letter-spacing:-0.5px;color:#1A1A1A;margin-bottom:24px">六边形模块化系统</h1>
     <div style="max-width:560px;margin:0 auto">
       <p style="font-size:15px;color:#6b6b66;line-height:1.8;font-weight:300">以六边形为基础单元，通过标准化接口实现自由拼接。<br>从单一模块到完整生态空间，四步即可完成。</p>
     </div>
@@ -1064,7 +1101,7 @@ input,select,textarea{font-family:inherit;font-size:inherit}
   <div style="max-width:1320px;margin:0 auto;padding:0 var(--page-pad) 100px">
     <div style="margin-bottom:80px;text-align:center">
       <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#a0a09b;margin-bottom:16px;font-weight:300">Comparison</div>
-      <h2 style="font-size:clamp(28px,4vw,48px);font-weight:300;line-height:1.2;letter-spacing:-0.5px;color:#1A1A1A">传统搭建 vs MGILT</h2>
+      <h2 style="font-size:24px;font-weight:300;line-height:1.2;letter-spacing:-0.5px;color:#1A1A1A">传统搭建 vs MGILT</h2>
     </div>
     <div style="border-top:1px solid #e5e5e5">
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;padding:32px 0;border-bottom:1px solid #e5e5e5;align-items:center">
@@ -1102,7 +1139,7 @@ input,select,textarea{font-family:inherit;font-size:inherit}
     <div style="max-width:1320px;margin:0 auto;padding:0 var(--page-pad);position:relative;z-index:1">
       <div style="margin-bottom:80px;text-align:center">
         <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#a0a09b;margin-bottom:16px;font-weight:300">Core Units</div>
-        <h2 style="font-size:clamp(28px,4vw,48px);font-weight:300;line-height:1.2;letter-spacing:-0.5px;color:#1A1A1A">六大核心模块</h2>
+        <h2 style="font-size:24px;font-weight:300;line-height:1.2;letter-spacing:-0.5px;color:#1A1A1A">六大核心模块</h2>
       </div>
       <div id="modulesGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:48px">
         <!-- 模块卡片由 JS 生成 -->
@@ -1111,11 +1148,11 @@ input,select,textarea{font-family:inherit;font-size:inherit}
   </div>
 
   <!-- 四步构建 -->
-  <div style="padding:100px 0;background:#fff">
+  <div style="padding:100px 0;background:#FAFAF8">
     <div style="max-width:1320px;margin:0 auto;padding:0 var(--page-pad)">
       <div style="margin-bottom:80px;text-align:center">
         <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#a0a09b;margin-bottom:16px;font-weight:300">Process</div>
-        <h2 style="font-size:clamp(28px,4vw,48px);font-weight:300;line-height:1.2;letter-spacing:-0.5px;color:#1A1A1A">四步构建你的空间</h2>
+        <h2 style="font-size:24px;font-weight:300;line-height:1.2;letter-spacing:-0.5px;color:#1A1A1A">四步构建你的空间</h2>
       </div>
       <div style="display:flex;gap:80px;align-items:stretch">
         <div id="stepsList" style="flex:0 0 30%;display:flex;flex-direction:column">
@@ -1133,7 +1170,7 @@ input,select,textarea{font-family:inherit;font-size:inherit}
     <div style="max-width:1320px;margin:0 auto;padding:0 var(--page-pad)">
       <div style="margin-bottom:80px;text-align:center">
         <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:16px;font-weight:300">Specifications</div>
-        <h2 style="font-size:clamp(28px,4vw,48px);font-weight:300;line-height:1.2;letter-spacing:-0.5px;color:#fff">技术规格</h2>
+        <h2 style="font-size:24px;font-weight:300;line-height:1.2;letter-spacing:-0.5px;color:#fff">技术规格</h2>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:80px;margin-bottom:80px;text-align:center">
         <div>
@@ -1287,7 +1324,7 @@ input,select,textarea{font-family:inherit;font-size:inherit}
       if (!list || !image) return;
 
       list.innerHTML = steps.map((s, i) => `
-        <div class="step-item" data-index="${i}" style="padding:32px;border-left:2px solid transparent;transition:all 0.5s;opacity:${i === 0 ? '1' : '0.3'};background:${i === 0 ? '#fafaf8' : 'transparent'};flex:1;display:flex;flex-direction:column;justify-content:center">
+        <div class="step-item" data-index="${i}" style="padding:32px;border-left:2px solid transparent;transition:all 0.5s;opacity:${i === 0 ? '1' : '0.3'};background:${i === 0 ? '#e8f0e9' : 'transparent'};flex:1;display:flex;flex-direction:column;justify-content:center">
           <div style="display:flex;align-items:center;gap:24px;margin-bottom:16px">
             <span style="font-size:24px;font-weight:300;font-family:'JetBrains Mono',monospace">${s.id}</span>
             <h3 style="font-size:16px;font-weight:400;letter-spacing:-0.3px">${s.title}</h3>
@@ -1319,8 +1356,8 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 
       list.querySelectorAll('.step-item').forEach((item, i) => {
         if (i === idx) {
-          item.style.borderLeftColor = '#1A1A1A';
-          item.style.background = '#fafaf8';
+          item.style.borderLeftColor = '#7A9E7E';
+          item.style.background = '#e8f0e9';
           item.style.opacity = '1';
         } else {
           item.style.borderLeftColor = 'transparent';
@@ -1503,6 +1540,7 @@ input,select,textarea{font-family:inherit;font-size:inherit}
         <button onclick="editorAction('undo')" id="editorUndoBtn" style="opacity:.4" disabled>撤销</button>
         <button onclick="console.log('保存 clicked');editorAction('save')">保存</button>
         <button onclick="showUpdateModal()" id="updateBtn" style="display:none;background:var(--sage);color:white;border-color:var(--sage)">更新</button>
+        <button onclick="toggleElementSelectMode()" id="btn-select-element" style="background:var(--gray-100)">选择</button>
         <button onclick="editorAction('screenshot')">截图</button>
               </div>
       <div class="editor-toolbar-title">MGILT 空间设计台</div>
@@ -1515,21 +1553,21 @@ input,select,textarea{font-family:inherit;font-size:inherit}
     </div>
     <div class="editor-body">
       <div class="editor-sidebar">
-        <h3>模块面板</h3>
+        <h3 id="modulePaletteHeader" onclick="toggleModulePalette()" style="cursor:pointer">模块面板</h3>
         <div class="module-palette" id="modulePalette"></div>
-        <div style="margin-top:16px">
-          <h3>快捷键</h3>
-          <p style="font-size:11px;color:var(--gray-500);line-height:1.8;margin-top:8px">
+        <h3 id="sceneElementHeader" onclick="toggleSceneElementPalette()" style="cursor:pointer">场景元素</h3>
+        <div class="scene-element-palette" id="sceneElementPalette"></div>
+        <div style="padding:16px 20px;border-top:1px solid var(--gray-200)">
+          <p style="font-size:11px;color:var(--gray-500);line-height:1.8">
+            <b style="color:var(--gray-600)">快捷键</b><br>
             1-6: 切换模块<br>
             Ctrl+Z: 撤销<br>
             右键: 移除模块<br>
-            滚轮: 缩放视图<br>
-            左键按住: 旋转视图<br>
-            右键按住: 平移视图
+            R: 旋转元素
           </p>
         </div>
       </div>
-      <div class="editor-canvas" id="editorCanvas"></div>
+      <div class="editor-canvas" id="editorCanvas" tabindex="0"></div>
       <div class="editor-stats" id="editorStats">
         <div class="stat-section">
           <h3>推荐组合</h3>
@@ -1845,11 +1883,11 @@ input,select,textarea{font-family:inherit;font-size:inherit}
   <div class="dash-layout">
     <div class="dash-sidebar">
       <div class="dash-user">
-        <label class="dash-avatar" id="dashAvatarLabel" style="cursor:pointer;width:48px;height:48px;border-radius:50%;background:var(--sage-light);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);color:var(--sage);font-size:18px;margin-bottom:12px;overflow:hidden;position:relative">
+        <label class="dash-avatar" id="dashAvatarLabel" for="dashAvatarInput" style="cursor:pointer;width:48px;height:48px;border-radius:50%;background:var(--sage-light);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);color:var(--sage);font-size:18px;margin-bottom:12px;overflow:hidden;position:relative">
           <img id="dashAvatarImg" style="width:100%;height:100%;object-fit:cover;display:none" alt="avatar">
           <span id="dashAvatarInitial" style="pointer-events:none"></span>
-          <input type="file" id="dashAvatarInput" accept="image/*" style="position:absolute;opacity:0;width:0;height:0" onchange="handleDashAvatarChange(this)">
         </label>
+        <input type="file" id="dashAvatarInput" accept="image/*" style="position:absolute;opacity:0;width:0;height:0" onchange="handleDashAvatarChange(this)">
         <div id="dashNameWrap" style="margin-top:12px">
           <h4 id="dashUserTitle" onclick="startEditDashName()" style="cursor:pointer" title="点击修改">用户中心</h4>
           <input type="text" id="dashNameInput" style="display:none;width:100%;font-size:14px;border:1px solid var(--sage);border-radius:4px;padding:2px 6px;margin-top:4px" maxlength="20" onblur="saveDashName()" onkeydown="if(event.key==='Enter')saveDashName()">
@@ -1936,7 +1974,7 @@ input,select,textarea{font-family:inherit;font-size:inherit}
   <div class="cases-hero">
     <div class="container">
       <div class="section-label reveal">Projects</div>
-      <div class="section-title reveal">案例展示</div>
+      <div class="section-title reveal" style="font-size:36px">案例展示</div>
       <div class="section-subtitle reveal" style="margin:0 auto;text-align:center">探索 MGILT 模块化系统在不同场景下的应用实践。</div>
     </div>
   </div>
@@ -2045,7 +2083,7 @@ input,select,textarea{font-family:inherit;font-size:inherit}
       <h1>成为 <span>MGILT</span> 合作伙伴</h1>
       <p class="partner-hero-subtitle">构建未来户外空间市场</p>
       <div class="partner-hero-cta">
-        <a href="#partner-apply" class="btn btn-sage">立即申请</a>
+        <a href="javascript:void(0)" class="btn btn-sage" onclick="if(window.navigateTo){window.navigateTo('partner');setTimeout(()=>document.getElementById('partnerContactSection').scrollIntoView({behavior:'smooth'}),300)}else{document.getElementById('partnerContactSection').scrollIntoView({behavior:'smooth'})}">立即申请</a>
       </div>
     </div>
     <div class="partner-scroll-hint">向下滚动 ↓</div>
@@ -2102,36 +2140,6 @@ input,select,textarea{font-family:inherit;font-size:inherit}
           <div class="adv-icon"><svg viewBox="0 0 32 32"><path d="M16 4 L16 12"/><path d="M8 16 L24 16"/><path d="M16 12 Q24 16 16 28 Q8 16 16 12"/></svg></div>
           <h4>高复购潜力</h4>
           <p>空间可扩展、可迁移，客户持续追加配置需求</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="partner-profit">
-    <div class="container">
-      <div class="section-label reveal">Profit Model</div>
-      <div class="profit-intro">
-        <h3>盈利逻辑</h3>
-        <p>不是卖产品，而是卖空间解决方案。我们提供的不只是模块，而是完整的高利润商业模式。</p>
-      </div>
-      <div class="profit-model">
-        <div class="profit-card reveal">
-          <div class="quote-mark">"</div>
-          <h4>单模块销售</h4>
-          <p>标准化模块独立销售，客户按需采购</p>
-          <div class="profit-highlight">高周转 · 低库存</div>
-        </div>
-        <div class="profit-card reveal">
-          <div class="quote-mark">"</div>
-          <h4>空间方案销售</h4>
-          <p>基于编辑器的一站式空间解决方案交付</p>
-          <div class="profit-highlight">高客单价 · 高利润</div>
-        </div>
-        <div class="profit-card reveal">
-          <div class="quote-mark">"</div>
-          <h4>项目合作</h4>
-          <p>与地产、民宿、景区等大型项目深度合作</p>
-          <div class="profit-highlight">长期收益 · 品牌背书</div>
         </div>
       </div>
     </div>
@@ -2195,19 +2203,19 @@ input,select,textarea{font-family:inherit;font-size:inherit}
         <div>
           <div class="contact-info-block">
             <h4>总部</h4>
-            <p>上海市浦东新区陆家嘴环路 1088号<br>MGILT 创新中心 28层<br>200120</p>
+            <p>上海市徐汇区龙腾大道2937号1-7</p>
           </div>
           <div class="contact-info-block">
             <h4>联系方式</h4>
-            <p>电话：+86 21 6888 8888<br>邮箱：<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="18707d74747758757f71746c367b7775">[email&#160;protected]</a><br>工作时间：周一至周五 9:00-18:00</p>
-          </div>
-          <div class="contact-info-block">
-            <h4>研发中心</h4>
-            <p>深圳市南山区科技园<br>MGILT 研发基地</p>
+            <p>电话：+86-21-65982678<br>86-13917257348<br>邮箱：<a href="mailto:contact@mgilt.com">contact@mgilt.com</a></p>
           </div>
           <div class="contact-info-block">
             <h4>关注我们</h4>
-            <p>微信公众号：MGILT麦吉蓝图<br>微博：@MGILT官方<br>小红书：MGILT 模块化空间</p>
+            <p>微信公众号：MGILT麦吉蓝图<br>小红书：麦吉花园</p>
+          </div>
+          <div class="contact-qr-codes">
+            <img src="images/qr-wechat.jpg" alt="微信公众号二维码" class="qr-code">
+            <img src="images/qr-xiaohongshu.jpg" alt="小红书二维码" class="qr-code">
           </div>
         </div>
       </div>
@@ -2274,6 +2282,7 @@ function navigateTo(page){window.location.hash=page}
 window.navigateTo=navigateTo;
 function navMobile(page){document.getElementById('mobileMenu').classList.remove('open');navigateTo(page)}
 function toggleMobile(){document.getElementById('mobileMenu').classList.toggle('open')}
+window.toggleModulePalette=function(){const h=document.getElementById('modulePaletteHeader');const p=document.getElementById('modulePalette');const isCollapsed=h.classList.contains('collapsed');if(isCollapsed){h.classList.remove('collapsed');p.style.display='block'}else{h.classList.add('collapsed');p.style.display='none'}};
 function showTab(tab){
   if(tab==='login'){
     document.getElementById('tabLogin').className='login-tab active';
@@ -3215,10 +3224,10 @@ const CASES=[
   {name:'智慧养老社区',loc:'苏州 · 园区',type:'residential',mods:['A','A','B','C','E','F'],h:280,c1:'#e8f0e9',c2:'#f0ece4'},
 ];
 const PROJECTS=[
-  {id:1,title:'国际学校户外交流空间',category:'教育空间',location:'上海',modules:['Module D','Module F','Module C'],images:['images/project1.jpg'],alignment:'left'},
+  {id:1,title:'国际学校户外交流空间',category:'教育空间',location:'上海',modules:['Module D','Module F','Module C'],images:['images/school-1.jpg','images/school-2.jpg','images/school-3.jpg','images/school-4.jpg'],alignment:'left'},
   {id:2,title:'巨鹿路西班牙餐厅',category:'商业空间',location:'上海',modules:['Module A','Module B','Module E'],images:['images/project2-1.jpg','images/project2-2.jpg'],alignment:'right'},
   {id:3,title:'开放办公空间',category:'公共空间',location:'上海',modules:['Module B','Module D','Module F'],images:['images/project3-1.jpg','images/project3-2.jpg'],alignment:'left'},
-  {id:4,title:'徐汇西岸咖啡厅',category:'商业空间',location:'上海',modules:['Module C','Module G','Module H'],images:['images/project4-1.jpg','images/project4-2.jpg'],alignment:'right'},
+  {id:4,title:'徐汇西岸咖啡厅',category:'商业空间',location:'上海',modules:['Module C','Module G','Module H'],images:['images/xuhu-westbank-1.jpg','images/xuhu-westbank-2.jpg'],alignment:'right'},
   {id:5,title:'山间冥想亭',category:'公共空间',location:'杭州 · 西湖',modules:['Module A','Module S'],images:['https://picsum.photos/seed/mgilt5a/2000/1200','https://picsum.photos/seed/mgilt5b/2000/1200'],alignment:'left'},
 ];
 function initCasesNew(filter='all'){
@@ -3241,7 +3250,7 @@ function initCasesNew(filter='all'){
         <div class="case-flow-info">
           <div class="case-flow-info-top">
             <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.3em;text-transform:uppercase;opacity:.3;margin-bottom:16px">Project / ${idx+1}</div>
-            <h3 style="font-family:'Playfair Display',serif;font-size:clamp(28px,3vw,42px);font-weight:300;line-height:1.15;letter-spacing:-.5px">${p.title}</h3>
+            <h3 style="font-family:var(--font-display);font-size:clamp(28px,3vw,42px);font-weight:300;line-height:1.15;letter-spacing:-.5px">${p.title}</h3>
           </div>
           <div class="case-flow-meta">
             <div class="case-flow-meta-row"><span class="case-flow-meta-label">Category</span><span class="case-flow-meta-value">${p.category}</span></div>
@@ -3519,5 +3528,19 @@ window.addEventListener('error', function(e) {
 });
 </script>
 <script type="module" src="./js/editor-3d.js"></script>
+  <!-- 回到顶部按钮 -->
+  <button class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M18 15l-6-6-6 6"/>
+    </svg>
+  </button>
+  <script>
+    // 监听滚动，显示/隐藏回到顶部按钮
+    window.addEventListener('scroll',function(){
+      var btn=document.getElementById('backToTop');
+      if(window.scrollY>500){btn.classList.add('visible');}
+      else{btn.classList.remove('visible');}
+    });
+  </script>
 </body>
 </html>

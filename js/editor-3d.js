@@ -1,9 +1,10 @@
-import * as THREE from './three.module.js';
-import { OrbitControls } from './OrbitControls.js';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-console.log('MGILT Editor: Script loaded');
-console.log('THREE imported:', !!THREE);
-console.log('OrbitControls imported:', !!OrbitControls);
+// console.log('MGILT Editor: Script loaded');
+// console.log('THREE imported:', !!THREE);
+// console.log('OrbitControls imported:', !!OrbitControls);
 
 const MODULES = [
   { id:0, name:'踏面', height:50,  type:'step',    desc:'50mm高度 / 边长490mm', price:699, color:'#5B8C5A' },
@@ -32,15 +33,17 @@ let selectedModule = 0;
 let hoverKey = null;
 let meshes = {};
 let ghostMesh = null;
+let sceneElementGhost = null; // 场景元素预览
 let gridCells = {};
 let undoStack = [];
 let eraserMode = false;
 let symmetryMode = false;
 let fillBucketMode = false;
+let moduleSelectionActive = false; // 用户是否主动选择了模块（显示预览）
 
 let scene, camera, renderer, controls;
 let ambLight, hemiLight, dirLight;
-let gridGroup;
+let gridGroup, ground;
 
 function initEditor3D() {
   const wrap = document.getElementById('editorCanvas');
@@ -72,6 +75,13 @@ function initEditor3D() {
   controls.minDistance = 4;
   controls.maxDistance = 30;
   controls.target.set(0, 0, 0);
+
+  // 鼠标按键映射：中键旋转，右键平移，禁用左键旋转（保留给编辑器交互）
+  controls.mouseButtons = {
+    LEFT: null,  // 禁用左键旋转
+    MIDDLE: THREE.MOUSE.ROTATE, // 中键旋转
+    RIGHT: THREE.MOUSE.PAN     // 右键平移
+  };
 
   ambLight = new THREE.AmbientLight(0xfff5e6, 0.6);
   scene.add(ambLight);
@@ -111,7 +121,7 @@ function initEditor3D() {
   groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
   const groundGeo = new THREE.CircleGeometry(20, 64);
   const groundMat = new THREE.MeshStandardMaterial({ map: groundTex, roughness: 0.95, metalness: 0 });
-  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.02;
   ground.receiveShadow = true;
@@ -602,6 +612,80 @@ function onPointerMove(e) {
   mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
   if (mouseDown) mouseMoved = true;
 
+  // 拖拽场景元素模式
+  if (elementDragging && selectedElement) {
+    raycaster.setFromCamera(mouse, camera);
+    // 射线与地面相交
+    const groundHits = raycaster.intersectObject(ground);
+    if (groundHits.length > 0) {
+      const point = groundHits[0].point;
+      const { y: targetY } = getHeightAtPosition(point.x, point.z);
+      // 移动到新位置，保持底座在目标高度
+      selectedElement.position.x = point.x;
+      selectedElement.position.z = point.z;
+      selectedElement.position.y = targetY + selectedElement.userData.baseY;
+    }
+    return;
+  }
+
+  // 场景元素放置模式：显示元素预览
+  if (sceneElementMode && currentSceneElementModel) {
+    raycaster.setFromCamera(mouse, camera);
+    const groundHits = raycaster.intersectObject(ground);
+    if (groundHits.length > 0) {
+      const point = groundHits[0].point;
+      const { y: targetY } = getHeightAtPosition(point.x, point.z);
+      // 移除旧预览
+      if (sceneElementGhost) {
+        scene.remove(sceneElementGhost);
+      }
+      // 创建新预览（半透明）
+      sceneElementGhost = currentSceneElementModel.clone();
+      sceneElementGhost.position.set(point.x, targetY + umbrellaBaseOffset, point.z);
+      sceneElementGhost.visible = true;
+      // 设置半透明
+      sceneElementGhost.traverse(child => {
+        if (child.isMesh && child.material) {
+          child.material = child.material.clone();
+          child.material.transparent = true;
+          child.material.opacity = 0.5;
+        }
+      });
+      scene.add(sceneElementGhost);
+    } else {
+      // 移除外面的预览
+      if (sceneElementGhost) {
+        scene.remove(sceneElementGhost);
+        sceneElementGhost = null;
+      }
+    }
+    // 不再显示模块预览
+    return;
+  } else {
+    // 非场景元素模式时清除预览
+    if (sceneElementGhost) {
+      scene.remove(sceneElementGhost);
+      sceneElementGhost = null;
+    }
+  }
+
+  // 选择模式下（有场景元素存在时）的 hover 效果
+  if (sceneElements.length > 0 && !sceneElementMode) {
+    // 选择模式下鼠标悬停在场景元素上时高亮该元素
+    if (selectedElement) {
+      // 有选中元素，只显示选中元素的高亮，清除 hover 状态
+      if (hoverKey && gridCells[hoverKey]) {
+        gridCells[hoverKey].mesh.material.color.set(0xD4CCB8);
+        gridCells[hoverKey].mesh.material.opacity = 0.35;
+      }
+      hoverKey = null;
+      updateGhost(null, null);
+    }
+    // 选择模式下不显示模块 hover 效果
+    return;
+  }
+
+  // 非选择模式（正常编辑模式）
   raycaster.setFromCamera(mouse, camera);
   const targets = Object.values(gridCells).map(c => c.mesh);
   const hits = raycaster.intersectObjects(targets);
@@ -622,23 +706,109 @@ function onPointerMove(e) {
       cell.material.color.set(0xCC5544);
       cell.material.opacity = 0.4;
     }
-    updateGhost(cell.userData.q, cell.userData.r);
+    // 只有在模块选择激活时才显示预览
+    if (moduleSelectionActive) {
+      updateGhost(cell.userData.q, cell.userData.r);
+    }
   } else {
     hoverKey = null;
-    updateGhost(null, null);
+    if (moduleSelectionActive) {
+      updateGhost(null, null);
+    }
   }
 }
 
 function onPointerDown(e) {
   mouseDown = true;
   mouseMoved = false;
+
+  // 检测是否点击在选中的场景元素上，如果是则开始拖拽
+  if (e.button === 0 && selectedElement && sceneElements.length > 0) {
+    raycaster.setFromCamera(mouse, camera);
+    const elementTargets = sceneElements.flatMap(el => el.children.length > 0 ? el.children : [el]);
+    const hits = raycaster.intersectObjects(elementTargets, true);
+    if (hits.length > 0) {
+      let hitObject = hits[0].object;
+      while (hitObject.parent && !sceneElements.includes(hitObject)) {
+        hitObject = hitObject.parent;
+      }
+      if (sceneElements.includes(hitObject) && hitObject === selectedElement) {
+        elementDragging = true;
+      }
+    }
+  }
 }
 
 function onPointerUp(e) {
   const wasDrag = mouseMoved;
   mouseDown = false;
   mouseMoved = false;
+
+  // 结束拖拽
+  if (elementDragging) {
+    elementDragging = false;
+    // 拖拽结束后如果之前在移动则不触发选择
+    return;
+  }
+
   if (wasDrag) return;
+
+  // 场景元素交互（有场景元素时，且不在放置模式下）
+  if (sceneElements.length > 0 && !sceneElementMode) {
+    raycaster.setFromCamera(mouse, camera);
+    const elementTargets = sceneElements.flatMap(el => el.children.length > 0 ? el.children : [el]);
+    const hits = raycaster.intersectObjects(elementTargets, true);
+
+    // 右键点击场景元素 → 删除
+    if (e.button === 2) {
+      if (hits.length > 0) {
+        let hitObject = hits[0].object;
+        while (hitObject.parent && !sceneElements.includes(hitObject)) {
+          hitObject = hitObject.parent;
+        }
+        if (sceneElements.includes(hitObject)) {
+          removeSceneElement(hitObject);
+          return;
+        }
+      }
+      return;
+    }
+
+    // 左键点击场景元素 → 选中
+    if (e.button === 0) {
+      if (hits.length > 0) {
+        let hitObject = hits[0].object;
+        while (hitObject.parent && !sceneElements.includes(hitObject)) {
+          hitObject = hitObject.parent;
+        }
+        if (sceneElements.includes(hitObject)) {
+          selectSceneElement(hitObject);
+          return;
+        }
+      }
+      // 点击空白处取消选中
+      selectSceneElement(null);
+      return;
+    }
+  }
+
+  // 场景元素放置模式：点击地面或模块表面放置元素
+  if (sceneElementMode && currentSceneElementModel) {
+    raycaster.setFromCamera(mouse, camera);
+    const targets = [ground];
+    const hits = raycaster.intersectObjects(targets, true);
+    if (hits.length > 0) {
+      const point = hits[0].point;
+      const { y: surfaceHeight } = getHeightAtPosition(point.x, point.z);
+      window.placeSceneElementAt(point.x, point.z, 0, surfaceHeight);
+      // 放置后更新预览位置
+      if (sceneElementGhost) {
+        scene.remove(sceneElementGhost);
+        sceneElementGhost = null;
+      }
+      return;
+    }
+  }
 
   if (!hoverKey) return;
   const cell = gridCells[hoverKey];
@@ -698,14 +868,51 @@ function onContextMenu(e) {
 }
 
 function onKeyDown(e) {
+  // ESC 键：退出当前选中状态和预览
+  if (e.key === 'Escape') {
+    // 清除场景元素选中
+    if (selectedElement) {
+      selectSceneElement(null);
+    }
+    // 退出场景元素放置模式
+    if (sceneElementMode) {
+      sceneElementMode = false;
+      // 清除场景元素预览
+      if (sceneElementGhost) {
+        scene.remove(sceneElementGhost);
+        sceneElementGhost = null;
+      }
+      // 清除左侧面板选中状态
+      document.querySelectorAll('.scene-element-item').forEach(item => item.classList.remove('selected'));
+    }
+    // 清除模块选择激活状态
+    moduleSelectionActive = false;
+    // 清除模块面板选中高亮
+    document.querySelectorAll('.palette-item').forEach(p => p.classList.remove('selected'));
+    // 清除预览
+    updateGhost(null, null);
+    // 清除 hover 状态
+    if (hoverKey && gridCells[hoverKey]) {
+      gridCells[hoverKey].mesh.material.color.set(0xD4CCB8);
+      gridCells[hoverKey].mesh.material.opacity = 0.35;
+    }
+    hoverKey = null;
+    return;
+  }
+
   const n = parseInt(e.key);
   if (n >= 1 && n <= 6) {
     selectedModule = n - 1;
+    moduleSelectionActive = true; // 激活模块预览
     document.querySelectorAll('.palette-item').forEach((el, j) => el.classList.toggle('selected', j === n - 1));
   }
   if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
     e.preventDefault();
     window.editorUndo();
+  }
+  // R 键旋转选中的场景元素
+  if (e.key === 'r' || e.key === 'R') {
+    window.rotateSelectedSceneElement();
   }
 }
 
@@ -755,10 +962,10 @@ window.editorAction = function(action) {
   } else if (action === 'undo') {
     window.editorUndo();
   } else if (action === 'save') {
-    console.log('editorAction save called');
+    // console.log('editorAction save called');
     try {
       window.showSaveModal();
-      console.log('showSaveModal called successfully');
+      // console.log('showSaveModal called successfully');
     } catch (e) {
       console.error('Error in showSaveModal:', e);
     }
@@ -977,21 +1184,91 @@ function randomFill() {
 function initPalette() {
   const pal = document.getElementById('modulePalette');
   if (!pal || pal.children.length > 0) return;
-  
-  pal.innerHTML = MODULES.map((m, i) => `
+
+  pal.innerHTML = MODULES.map((m, i) => {
+    // 使用模块对应的颜色
+    return `
     <div class="palette-item${i === 0 ? ' selected' : ''}" data-mod="${m.id}" onclick="selectModule3D(${m.id}, this)">
-      <div class="palette-hex" style="background:${m.color}"></div>
+      <div class="module-thumbnail">
+        <div class="module-hex" style="background:${m.color}"></div>
+      </div>
       <div class="palette-info">
         <strong>${m.name}</strong>
         <span>${m.desc}</span>
       </div>
       <span class="pal-badge" id="badge-${i}"></span>
     </div>
-  `).join('');
+  `}).join('');
+
+  // 默认折叠
+  const header = document.getElementById('modulePaletteHeader');
+  const palette = document.getElementById('modulePalette');
+  if (header) header.classList.add('collapsed');
+  if (palette) palette.classList.add('collapsed');
 }
+
+window.toggleModulePalette = function() {
+  const header = document.getElementById('modulePaletteHeader');
+  const palette = document.getElementById('modulePalette');
+  if (!header || !palette) return;
+  header.classList.toggle('collapsed');
+  palette.classList.toggle('collapsed');
+};
+
+// 场景元素类型定义
+const SCENE_ELEMENT_TYPES = [
+  { id: 'umbrella', name: '阳伞', icon: '<img src="images/太阳伞.png" style="width:32px;height:32px;object-fit:contain">' },
+  { id: 'four_table_chair', name: '四人桌椅组合', icon: '<img src="images/桌椅组合.png" style="width:32px;height:32px;object-fit:contain">' },
+  { id: 'single_chair', name: '单人高座椅组合', icon: '<img src="images/桌椅组合.png" style="width:32px;height:32px;object-fit:contain">' },
+  { id: 'small_round_table', name: '小圆桌', icon: '<img src="images/桌椅组合.png" style="width:32px;height:32px;object-fit:contain">' },
+  { id: 'business_person_01', name: '商务人01', icon: '<img src="images/商务人员.png" style="width:32px;height:32px;object-fit:contain">' },
+  { id: 'business_person_02', name: '商务人02', icon: '<img src="images/商务人员.png" style="width:32px;height:32px;object-fit:contain">' },
+  { id: 'business_person_03', name: '商务人03', icon: '<img src="images/商务人员.png" style="width:32px;height:32px;object-fit:contain">' }
+];
+
+// 初始化场景元素面板
+function initSceneElementPalette() {
+  const pal = document.getElementById('sceneElementPalette');
+  if (!pal || pal.children.length > 0) return;
+
+  pal.innerHTML = SCENE_ELEMENT_TYPES.map((el, i) => `
+    <div class="scene-element-item" data-el="${el.id}" onclick="selectSceneElementType('${el.id}', this)">
+      <div class="scene-element-icon">${el.icon}</div>
+      <div class="palette-info">
+        <strong>${el.name}</strong>
+      </div>
+    </div>
+  `).join('');
+
+  // 默认折叠
+  const header = document.getElementById('sceneElementHeader');
+  const palette = document.getElementById('sceneElementPalette');
+  if (header) header.classList.add('collapsed');
+  if (palette) palette.classList.add('collapsed');
+}
+
+// 切换场景元素面板
+window.toggleSceneElementPalette = function() {
+  const header = document.getElementById('sceneElementHeader');
+  const palette = document.getElementById('sceneElementPalette');
+  if (!header || !palette) return;
+  header.classList.toggle('collapsed');
+  palette.classList.toggle('collapsed');
+};
+
+// 选择场景元素类型
+window.selectSceneElementType = function(elementId, el) {
+  // 取消之前选中
+  document.querySelectorAll('.scene-element-item').forEach(item => item.classList.remove('selected'));
+  // 选中当前
+  if (el) el.classList.add('selected');
+  // 加载并切换到该元素
+  window.toggleSceneElementMode(elementId);
+};
 
 window.selectModule3D = function(id, el) {
   selectedModule = id;
+  moduleSelectionActive = true; // 激活模块选择，显示预览
   eraserMode = false;
   const eraserBtn = document.getElementById('eraserBtn');
   if (eraserBtn) { eraserBtn.style.background = ''; eraserBtn.style.color = ''; }
@@ -1030,23 +1307,24 @@ function animate() {
 }
 
 window.initEditor = function() {
-  console.log('MGILT Editor: initEditor called');
+  // console.log('MGILT Editor: initEditor called');
   initPalette();
-  console.log('MGILT Editor: Palette initialized');
+  initSceneElementPalette();
+  // console.log('MGILT Editor: Palette initialized');
   setTimeout(() => {
-    console.log('MGILT Editor: Initializing 3D...');
+    // console.log('MGILT Editor: Initializing 3D...');
     try {
       initEditor3D();
-      console.log('MGILT Editor: 3D initialized successfully');
+      // console.log('MGILT Editor: 3D initialized successfully');
     } catch (e) {
       console.error('MGILT Editor: 3D init error:', e);
       alert('3D编辑器初始化失败: ' + e.message);
     }
     const canvas = document.getElementById('editorCanvas');
     if (canvas) {
-      console.log('MGILT Editor: Canvas found, adding event listeners');
+      // console.log('MGILT Editor: Canvas found, adding event listeners');
       canvas.addEventListener('pointermove', onPointerMove);
-      canvas.addEventListener('pointerdown', onPointerDown);
+      canvas.addEventListener('pointerdown', (e) => { canvas.focus(); onPointerDown(e); });
       canvas.addEventListener('pointerup', onPointerUp);
       canvas.addEventListener('contextmenu', onContextMenu);
       window.addEventListener('keydown', onKeyDown);
@@ -1085,9 +1363,11 @@ const RECOMMEND_PRESETS = {
   office: {
     name: '办公交流',
     modules: [
-      { type: 'seat-high', positions: [[0,0],[1,0],[-1,0],[0,1],[0,-1],[2,0],[-2,0]] },
-      { type: 'table', positions: [[3,0],[-3,0],[0,3],[0,-3]] },
-      { type: 'planter-low', positions: [[4,1],[-4,1],[4,-1],[-4,-1],[1,4],[-1,4],[1,-4],[-1,-4]] },
+      { type: 'step', positions: [[-1,3],[0,3],[0,2],[1,2],[-1,2],[0,1],[1,1],[2,0],[1,0],[0,0],[-1,0],[0,-1],[1,-1],[2,-1],[1,-2],[2,-2],[1,-3],[2,-3],[3,-3],[3,-4],[2,-4],[1,-4],[2,-5],[3,-5]] },
+      { type: 'planter-high', positions: [[-1,1],[3,-2]] },
+      { type: 'seat-low', positions: [[-2,2],[4,-5]] },
+      { type: 'table', positions: [[-2,3],[4,-6]] },
+      { type: 'planter-low', positions: [[3,-1],[0,-2],[3,-6]] },
     ]
   },
   school: {
@@ -1159,6 +1439,24 @@ window.toggleRecommendMenu = function() {
 window.closeRecommendMenu = function() {
   const menu = document.getElementById('recommendMenu');
   if (menu) menu.classList.remove('show');
+};
+
+window.applyRecommend = applyRecommend;
+
+// 导出当前设计配置（供控制台调用）
+window.exportDesignConfig = function() {
+  const types = ['step', 'seat-low', 'planter-low', 'seat-high', 'planter-high', 'table'];
+  const result = {};
+  Object.keys(placed).forEach(key => {
+    const [q, r] = key.split(',').map(Number);
+    const modId = placed[key];
+    const type = types[modId];
+    if (!result[type]) result[type] = [];
+    result[type].push([q, r]);
+  });
+  // console.log('模块配置数据：');
+  // console.log(JSON.stringify(result, null, 2));
+  return result;
 };
 
 function saveDesignToAccount(name) {
@@ -1235,18 +1533,18 @@ window.updateDesignToAccount = function(name) {
 window.editorReady = false;
 
 function loadDesignToEditor(designId) {
-  console.log('loadDesignToEditor called with designId:', designId);
+  // console.log('loadDesignToEditor called with designId:', designId);
   const savedDesigns = JSON.parse(localStorage.getItem('mgilt_designs') || '[]');
-  console.log('savedDesigns:', savedDesigns);
+  // console.log('savedDesigns:', savedDesigns);
   const design = savedDesigns.find(d => d.id === designId);
   if (!design) {
     alert('未找到该设计');
     return;
   }
-  console.log('Found design:', design);
+  // console.log('Found design:', design);
   // Clear editor state before navigating
   if (scene) {
-    console.log('Clearing existing scene meshes');
+    // console.log('Clearing existing scene meshes');
     Object.keys(meshes).forEach(key => { scene.remove(meshes[key]); });
   }
   // Clear existing objects instead of reassigning to new objects
@@ -1258,25 +1556,25 @@ function loadDesignToEditor(designId) {
 
   window.pendingDesignLoad = design;
   window.editorReady = false;
-  console.log('Setting pendingDesignLoad, navigating to editor');
+  // console.log('Setting pendingDesignLoad, navigating to editor');
   window.navigateTo('editor');
-  console.log('After navigate, window.editorReady:', window.editorReady, 'scene:', !!scene);
+  // console.log('After navigate, window.editorReady:', window.editorReady, 'scene:', !!scene);
 
   // Editor initialization is triggered by handleRoute (setTimeout 200ms)
   // If editor was already initialized, complete load immediately
   if (window.editorReady && scene) {
-    console.log('Editor already ready, loading design now');
+    // console.log('Editor already ready, loading design now');
     setTimeout(completeDesignLoad, 100);
   } else {
-    console.log('Editor not ready, will be loaded via handleRoute/initEditor');
+    // console.log('Editor not ready, will be loaded via handleRoute/initEditor');
   }
 }
 
 function completeDesignLoad() {
-  console.log('completeDesignLoad called');
+  // console.log('completeDesignLoad called');
   const design = window.pendingDesignLoad;
   if (!design) {
-    console.log('No design to load');
+    // console.log('No design to load');
     return;
   }
 
@@ -1284,12 +1582,12 @@ function completeDesignLoad() {
   window.currentEditingDesignId = design.id;
 
   if (!scene || !meshes) {
-    console.log('Editor not ready: scene=', !!scene, 'meshes=', !!meshes);
+    // console.log('Editor not ready: scene=', !!scene, 'meshes=', !!meshes);
     if (window.showToast) window.showToast('error', '编辑器未就绪');
     return;
   }
 
-  console.log('Loading design with modules:', design.modules);
+  // console.log('Loading design with modules:', design.modules);
   Object.keys(meshes).forEach(key => { scene.remove(meshes[key]); delete meshes[key]; });
   Object.keys(placed).forEach(key => delete placed[key]);
   undoStack = [];
@@ -1313,9 +1611,9 @@ function completeDesignLoad() {
 }
 
 function checkAndLoadPendingDesign() {
-  console.log('checkAndLoadPendingDesign: pending=', !!window.pendingDesignLoad, 'ready=', window.editorReady);
+  // console.log('checkAndLoadPendingDesign: pending=', !!window.pendingDesignLoad, 'ready=', window.editorReady);
   if (window.pendingDesignLoad && window.editorReady) {
-    console.log('Calling completeDesignLoad from checkAndLoadPendingDesign');
+    // console.log('Calling completeDesignLoad from checkAndLoadPendingDesign');
     completeDesignLoad();
   }
 }
@@ -1326,3 +1624,275 @@ document.addEventListener('click', function(e) {
     closeRecommendMenu();
   }
 });
+
+// ========== 场景元素测试 ==========
+let sceneElements = [];
+let selectedElement = null;
+let sceneElementMode = false;
+let elementSelectMode = false;
+let elementDragging = false; // 是否在拖拽场景元素
+
+const SCENE_ELEMENTS = {
+  umbrella: { id: 'umbrella', name: '阳伞', path: 'models/阳伞2.glb', scale: 2 },
+  four_table_chair: { id: 'four_table_chair', name: '四人桌椅组合', path: 'models/四人桌椅组合.glb', scale: 2 },
+  single_chair: { id: 'single_chair', name: '单人高座椅组合', path: 'models/单人高座椅组合.glb', scale: 2 },
+  small_round_table: { id: 'small_round_table', name: '小圆桌', path: 'models/小圆桌.glb', scale: 2 },
+  business_person_01: { id: 'business_person_01', name: '商务人01', path: 'models/商务人01.glb', scale: 2 },
+  business_person_02: { id: 'business_person_02', name: '商务人02', path: 'models/商务人02.glb', scale: 2 },
+  business_person_03: { id: 'business_person_03', name: '商务人03', path: 'models/商务人03.glb', scale: 2 }
+};
+
+let umbrellaOriginalMaterials = []; // 保存原始材质用于恢复选中状态
+let umbrellaBaseOffset = 0; // 阳伞底座偏移量
+let currentSceneElementModel = null; // 当前场景元素模型
+let currentElementConfig = null; // 当前元素配置
+
+// 根据世界坐标获取"落地高度"（地面或模块顶面）
+// 根据世界坐标获取"落地高度"（地面或模块顶面）
+function getHeightAtPosition(x, z) {
+  // 首先检查是否有模块在这个位置
+  const hexR = HEX_R;
+  const sqrt3 = Math.sqrt(3);
+
+  // 遍历所有已放置的模块，检查是否在这个位置
+  for (const key in meshes) {
+    const group = meshes[key];
+    const { q, r } = group.userData;
+    // 计算这个格子中心的世界坐标
+    const cellX = hexR * sqrt3 * (q + r / 2);
+    const cellZ = hexR * 1.5 * r;
+
+    // 计算到格子中心的距离
+    const dx = x - cellX;
+    const dz = z - cellZ;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+
+    // 如果在六边形范围内（稍微内缩一点）
+    if (dist < hexR * 0.92) {
+      // 获取这个模块的高度
+      const modId = placed[key];
+      if (modId !== undefined && MODULES[modId]) {
+        const moduleHeight = MODULES[modId].height * SCALE;
+        return { y: moduleHeight, onModule: true };
+      }
+    }
+  }
+
+  // 检查是否在网格范围内但没有模块（地面）
+  // 将世界坐标转换为六边形网格坐标
+  const qFloat = (sqrt3 / 3 * x - 1 / 3 * z) / hexR;
+  const rFloat = (2 / 3 * z) / hexR;
+  const q = Math.round(qFloat);
+  const r = Math.round(rFloat);
+
+  // 检查这个网格坐标是否在网格内
+  if (isInGrid(q, r)) {
+    return { y: 0, onModule: false, q, r };
+  }
+
+  // 默认在地面上
+  return { y: 0, onModule: false };
+}
+
+window.loadSceneElementModel = function(elementId) {
+  const config = SCENE_ELEMENTS[elementId];
+  if (!config) return;
+
+  // 如果没有模型路径，显示提示
+  if (!config.path) {
+    if (window.showToast) window.showToast('info', config.name + '模型待添加');
+    return;
+  }
+
+  const loader = new GLTFLoader();
+  loader.load(
+    config.path,
+    (gltf) => {
+      // console.log('场景元素加载成功:', config.name);
+      currentSceneElementModel = gltf.scene;
+      currentSceneElementModel.scale.setScalar(config.scale);
+
+      // 计算模型的包围盒，找到底座高度
+      const box = new THREE.Box3().setFromObject(currentSceneElementModel);
+      const minY = box.min.y;
+      const maxY = box.max.y;
+      // console.log('模型包围盒: minY=' + minY + ', maxY=' + maxY);
+
+      // 底座偏移量 = -minY，这样底座会在 y=0 的位置
+      umbrellaBaseOffset = -minY * config.scale;
+      // console.log('底座偏移量:', umbrellaBaseOffset);
+
+      // 模板模型不显示，只用于克隆
+      currentSceneElementModel.visible = false;
+      currentSceneElementModel.userData.isSceneElement = true;
+      currentSceneElementModel.userData.elementType = elementId;
+      currentSceneElementModel.userData.baseY = umbrellaBaseOffset;
+      if (window.showToast) window.showToast('info', config.name + '已加载，点击场景放置');
+    },
+    (progress) => {
+      if (progress.total > 0) {
+        // console.log('加载进度:', (progress.loaded / progress.total * 100).toFixed(1) + '%');
+      }
+    },
+    (err) => {
+      console.error('加载失败:', err);
+      if (window.showToast) window.showToast('error', '模型加载失败');
+    }
+  );
+};
+
+window.toggleSceneElementMode = function(elementId) {
+  const config = SCENE_ELEMENTS[elementId];
+  if (!config) return;
+
+  // 如果没有模型路径，提示并返回
+  if (!config.path) {
+    if (window.showToast) window.showToast('info', config.name + ' 模型待添加');
+    return;
+  }
+
+  if (sceneElementMode) {
+    // 关闭模式
+    sceneElementMode = false;
+    // console.log('场景元素模式: 关闭');
+  } else {
+    // 开启模式前先关闭选择模式
+    if (elementSelectMode) {
+      elementSelectMode = false;
+      const selectBtn = document.getElementById('btn-select-element');
+      if (selectBtn) selectBtn.classList.remove('active');
+    }
+    // 取消选中
+    if (selectedElement) {
+      selectSceneElement(null);
+    }
+    // 开启模式，清除模块选择激活状态
+    moduleSelectionActive = false;
+    sceneElementMode = true;
+    currentElementConfig = config;
+    if (!currentSceneElementModel || currentSceneElementModel.userData.elementType !== elementId) {
+      window.loadSceneElementModel(elementId);
+    }
+    // console.log('场景元素模式: 开启', config.name);
+  }
+};
+
+window.placeSceneElementAt = function(x, z, rotationY, baseHeight) {
+  if (!currentSceneElementModel) {
+    console.warn('场景元素模型未加载');
+    return;
+  }
+  const instance = currentSceneElementModel.clone();
+  // 元素底部 = 模块表面高度 + 模型底座偏移
+  const finalY = (baseHeight || 0) + umbrellaBaseOffset;
+  instance.position.set(x, finalY, z);
+  instance.rotation.y = rotationY || 0;
+  instance.visible = true;
+  instance.userData.isSceneElement = true;
+  instance.userData.elementType = currentElementConfig.id;
+  instance.userData.selected = false;
+  instance.userData.baseY = umbrellaBaseOffset;
+  instance.userData.surfaceHeight = baseHeight || 0;
+  // 保存原始材质
+  instance.userData.originalMaterials = [];
+  instance.traverse(child => {
+    if (child.isMesh && child.material) {
+      instance.userData.originalMaterials.push({ mesh: child, material: child.material });
+    }
+  });
+  scene.add(instance);
+  sceneElements.push(instance);
+  // console.log('已放置场景元素 at', x, z, 'finalY:', finalY, 'surfaceHeight:', baseHeight);
+};
+
+// 选中场景元素（带高亮效果）
+function selectSceneElement(element) {
+  // 取消之前的选中，恢复原始颜色
+  if (selectedElement) {
+    selectedElement.userData.selected = false;
+    // 恢复原始材质
+    if (selectedElement.userData.originalMaterials) {
+      selectedElement.userData.originalMaterials.forEach(({ mesh, material }) => {
+        mesh.material = material;
+      });
+    }
+  }
+
+  selectedElement = element;
+  // 选择场景元素后清除模块选择激活状态
+  moduleSelectionActive = false;
+  if (selectedElement) {
+    selectedElement.userData.selected = true;
+    // 添加高亮效果
+    if (selectedElement.userData.originalMaterials) {
+      selectedElement.userData.originalMaterials.forEach(({ mesh }) => {
+        if (mesh.material) {
+          mesh.material = mesh.material.clone();
+          mesh.material.emissive = new THREE.Color(0x7A9E7E);
+          mesh.material.emissiveIntensity = 0.3;
+        }
+      });
+    }
+    // console.log('选中场景元素');
+  }
+}
+
+// 切换元素选择模式
+window.toggleElementSelectMode = function() {
+  const btn = document.getElementById('btn-select-element');
+
+  if (elementSelectMode) {
+    // 关闭选择模式
+    elementSelectMode = false;
+    if (btn) btn.classList.remove('active');
+    // 取消选中
+    if (selectedElement) {
+      selectSceneElement(null);
+    }
+    // console.log('元素选择模式: 关闭');
+  } else {
+    // 开启选择模式前先关闭放置模式
+    if (sceneElementMode) {
+      sceneElementMode = false;
+      const umbrellaBtn = document.getElementById('btn-umbrella');
+      if (umbrellaBtn) umbrellaBtn.classList.remove('active');
+    }
+    // 开启选择模式
+    elementSelectMode = true;
+    if (btn) btn.classList.add('active');
+    // console.log('元素选择模式: 开启');
+  }
+};
+
+// 右击删除场景元素
+function removeSceneElement(element) {
+  scene.remove(element);
+  const idx = sceneElements.indexOf(element);
+  if (idx > -1) sceneElements.splice(idx, 1);
+  if (selectedElement === element) {
+    selectedElement = null;
+  }
+  // console.log('已删除场景元素');
+}
+
+// 清空所有场景元素
+window.clearAllSceneElements = function() {
+  sceneElements.forEach(el => scene.remove(el));
+  sceneElements = [];
+  selectedElement = null;
+  // console.log('已清空所有场景元素');
+};
+
+// 旋转选中元素（每次旋转45度）
+window.rotateSelectedSceneElement = function() {
+  if (selectedElement) {
+    selectedElement.rotation.y += Math.PI / 4;
+    // console.log('旋转元素, 当前角度:', (selectedElement.rotation.y * 180 / Math.PI).toFixed(0), '度');
+    if (window.showToast) window.showToast('info', '已旋转45°');
+  } else {
+    // console.log('没有选中的场景元素');
+    if (window.showToast) window.showToast('info', '请先点击选择场景元素');
+  }
+};
+
+// 测试：在控制台输入 window.toggleSceneElementMode('umbrella') 来加载阳伞
