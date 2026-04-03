@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=Noto+Sans+SC:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@300;400&family=Source+Han+Sans+CN:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="js/gsap.min.js"></script>
 <script src="js/ScrollTrigger.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -1542,6 +1543,7 @@ input,select,textarea{font-family:inherit;font-size:inherit}
         <button onclick="showUpdateModal()" id="updateBtn" style="display:none;background:var(--sage);color:white;border-color:var(--sage)">更新</button>
         <button onclick="toggleElementSelectMode()" id="btn-select-element" style="background:var(--gray-100)">选择</button>
         <button onclick="editorAction('screenshot')">截图</button>
+        <button onclick="exportDesignExcel()" style="background:var(--sage);color:white">导出报表</button>
               </div>
       <div class="editor-toolbar-title">MGILT 空间设计台</div>
       <div class="editor-toolbar-right" style="display:flex;gap:8px;align-items:center">
@@ -1574,16 +1576,23 @@ input,select,textarea{font-family:inherit;font-size:inherit}
           <div style="margin-top:8px">
             <select id="recommendSelect" onchange="applyRecommend(this.value)" style="width:100%;padding:8px 12px;font-size:12px;border:1px solid var(--gray-200);border-radius:6px;background:var(--white);cursor:pointer">
               <option value="">请选择...</option>
-              <option value="coffee">☕ 咖啡店</option>
               <option value="restaurant">🍽️ 餐厅外摆</option>
               <option value="office">💼 办公交流</option>
               <option value="school">🎓 学校庭院</option>
-              <option value="lounge">🛋️ 休闲 lounge</option>
-              <option value="retail">🏪 零售店铺</option>
             </select>
           </div>
         </div>
         <div class="stat-section" style="margin-top:32px">
+          <h3>场地范围</h3>
+          <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+            <input type="number" id="siteLength" placeholder="长" min="1" max="100" step="0.1" style="width:60px;padding:6px 8px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;text-align:center">
+            <span style="color:var(--gray-500);font-size:12px">×</span>
+            <input type="number" id="siteWidth" placeholder="宽" min="1" max="100" step="0.1" style="width:60px;padding:6px 8px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;text-align:center">
+            <span style="color:var(--gray-500);font-size:12px">m</span>
+          </div>
+          <button onclick="setSiteSize()" style="margin-top:8px;width:100%;padding:8px 12px;font-size:12px;background:var(--sage);color:white;border:none;border-radius:6px;cursor:pointer">应用范围</button>
+        </div>
+        <div class="stat-section" style="margin-top:16px">
           <h3>设计统计</h3>
           <div class="stat-row"><span>总模块数</span><span class="val" id="statTotal">0</span></div>
           <div class="stat-row"><span>总面积</span><span class="val" id="statArea">0 m²</span></div>

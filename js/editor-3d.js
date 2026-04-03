@@ -7,12 +7,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 // console.log('OrbitControls imported:', !!OrbitControls);
 
 const MODULES = [
-  { id:0, name:'踏面', height:50,  type:'step',    desc:'50mm高度 / 边长490mm', price:699, color:'#5B8C5A' },
-  { id:1, name:'低坐凳', height:280, type:'seat',   desc:'280mm高度 / 边长490mm', price:1499, color:'#7A9E7E' },
-  { id:2, name:'低种植', height:380, type:'planter', desc:'380mm高度 / 边长490mm', price:1699, color:'#BFA27A' },
-  { id:3, name:'高坐凳', height:480, type:'seat',    desc:'480mm高度 / 边长490mm', price:1899, color:'#8B7EB8' },
-  { id:4, name:'高种植', height:580, type:'planter', desc:'580mm高度 / 边长490mm', price:2099, color:'#A0887A' },
-  { id:5, name:'桌台', height:780, type:'table',   desc:'780mm高度 / 边长490mm', price:2399, color:'#5A7A8B' },
+  { id:0, name:'踏面', code:'M-V4-PT-0-S', height:50,  type:'step',    desc:'50mm高度 / 边长490mm', price:699, color:'#5B8C5A' },
+  { id:1, name:'低坐凳', code:'M-V4-BN-2-S', height:280, type:'seat',   desc:'280mm高度 / 边长490mm', price:1499, color:'#7A9E7E' },
+  { id:2, name:'低种植', code:'M-V4-PL-3-S', height:380, type:'planter', desc:'380mm高度 / 边长490mm', price:1699, color:'#BFA27A' },
+  { id:3, name:'高坐凳', code:'M-V4-BN-4-S', height:480, type:'seat',    desc:'480mm高度 / 边长490mm', price:1899, color:'#8B7EB8' },
+  { id:4, name:'高种植', code:'M-V4-PL-5-S', height:580, type:'planter', desc:'580mm高度 / 边长490mm', price:2099, color:'#A0887A' },
+  { id:5, name:'桌台', code:'M-V4-TB-7-S', height:780, type:'table',   desc:'780mm高度 / 边长490mm', price:2399, color:'#5A7A8B' },
 ];
 
 const FRAME_COLOR = 0x3D3530;
@@ -44,6 +44,13 @@ let moduleSelectionActive = false; // 用户是否主动选择了模块（显示
 let scene, camera, renderer, controls;
 let ambLight, hemiLight, dirLight;
 let gridGroup, ground;
+
+// 场地边界相关变量（用户输入的用地范围）
+let siteLength = 0; // 场地长度（米）
+let siteWidth = 0; // 场地宽度（米）
+let boundaryCells = {}; // 边界内的六边形格子 key -> {q, r}
+let boundaryBox = null; // 边界可视化框
+let siteWarningElement = null; // 场地超出提示元素
 
 function initEditor3D() {
   const wrap = document.getElementById('editorCanvas');
@@ -191,6 +198,169 @@ function buildGrid() {
     }
   }
 }
+
+// ============================================================
+// 场地边界功能：用户输入用地尺寸，限制模块和元素放置范围
+// ============================================================
+
+// 设置场地尺寸（供 HTML 调用）
+// length: 场地长度（米）, width: 场地宽度（米）
+function setSiteSizeFromUI() {
+  const lengthInput = document.getElementById('siteLength');
+  const widthInput = document.getElementById('siteWidth');
+  if (!lengthInput || !widthInput) return;
+
+  const length = parseFloat(lengthInput.value) || 0;
+  const width = parseFloat(widthInput.value) || 0;
+
+  setSiteSize(length, width);
+}
+
+function setSiteSize(length, width) {
+  siteLength = length;
+  siteWidth = width;
+
+  // 计算边界内的六边形格子
+  calculateBoundaryCells();
+
+  // 渲染边界可视化
+  renderBoundary();
+
+  // 更新统计
+  updateStats();
+
+  // 显示当前场地范围提示
+  if (siteLength > 0 && siteWidth > 0) {
+    showToast(`场地范围已设置：${siteLength}m × ${siteWidth}m`);
+  }
+}
+
+// 计算哪些六边形格子在场地边界内（矩形居中对齐）
+function calculateBoundaryCells() {
+  boundaryCells = {};
+
+  if (siteLength <= 0 || siteWidth <= 0) {
+    return;
+  }
+
+  // 将场地尺寸转换为世界坐标（与六边形同一坐标系）
+  const halfL = siteLength / 2;
+  const halfW = siteWidth / 2;
+
+  // 遍历所有现有的 gridCells，计算哪些在边界内
+  // 六边形中心点如果在场地矩形内，就算在边界内
+  for (const key in gridCells) {
+    const cell = gridCells[key];
+    const { x, z } = hexToWorld(cell.q, cell.r);
+
+    // 检查中心点是否在矩形范围内
+    if (Math.abs(x) <= halfL && Math.abs(z) <= halfW) {
+      boundaryCells[key] = cell;
+    }
+  }
+}
+
+// 渲染场地边界可视化（半透明矩形框）
+function renderBoundary() {
+  // 清除之前的边界可视化
+  if (boundaryBox) {
+    scene.remove(boundaryBox);
+    boundaryBox = null;
+  }
+
+  // 没有设置场地范围时，不渲染边界
+  if (siteLength <= 0 || siteWidth <= 0) {
+    return;
+  }
+
+  // 创建边界矩形框（用线框表示）
+  const halfL = siteLength / 2;
+  const halfW = siteWidth / 2;
+  const height = 0.05; // 边界框高度
+
+  // 创建矩形的 4 个顶点
+  const points = [
+    new THREE.Vector3(-halfL, 0, -halfW),
+    new THREE.Vector3(halfL, 0, -halfW),
+    new THREE.Vector3(halfL, 0, halfW),
+    new THREE.Vector3(-halfL, 0, halfW),
+    new THREE.Vector3(-halfL, 0, -halfW), // 闭合
+  ];
+
+  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+  const material = new THREE.LineBasicMaterial({
+    color: 0x7A9E7E, // sage 绿色
+    linewidth: 2
+  });
+
+  boundaryBox = new THREE.Line(geometry, material);
+  boundaryBox.position.y = 0.01; // 略高于地面
+  scene.add(boundaryBox);
+
+  // 添加四个角的标记
+  const cornerGeo = new THREE.SphereGeometry(0.05, 8, 8);
+  const cornerMat = new THREE.MeshBasicMaterial({ color: 0x7A9E7E });
+
+  const corners = [
+    [-halfL, -halfW], [halfL, -halfW],
+    [halfL, halfW], [-halfL, halfW]
+  ];
+
+  corners.forEach(([x, z]) => {
+    const corner = new THREE.Mesh(cornerGeo, cornerMat);
+    corner.position.set(x, 0.01, z);
+    boundaryBox.add(corner);
+  });
+}
+
+// 检查某个六边形坐标是否在场地边界内
+function isInBoundary(q, r) {
+  // 如果没有设置场地范围，默认所有格子都在范围内
+  if (siteLength <= 0 || siteWidth <= 0) {
+    return true;
+  }
+
+  const key = hexKey(q, r);
+  return boundaryCells.hasOwnProperty(key);
+}
+
+// 检查世界坐标是否在场地矩形边界内
+function isPointInBoundary(x, z) {
+  // 如果没有设置场地范围，默认所有点都在范围内
+  if (siteLength <= 0 || siteWidth <= 0) {
+    return true;
+  }
+
+  const halfL = siteLength / 2;
+  const halfW = siteWidth / 2;
+
+  return Math.abs(x) <= halfL && Math.abs(z) <= halfW;
+}
+
+// 显示场地超出警告
+function showSiteWarning(message) {
+  // 创建临时 toast 提示（如果页面有 toast 函数则调用，否则用 alert）
+  if (typeof showToast === 'function') {
+    showToast(message);
+  } else if (typeof Toast === 'function') {
+    Toast(message);
+  } else {
+    // 备用：创建一个简单的提示元素
+    const existing = document.getElementById('siteWarningToast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.id = 'siteWarningToast';
+    toast.textContent = message;
+    toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#CC5544;color:white;padding:12px 24px;border-radius:8px;font-size:14px;z-index:10000;animation:fadeInOut 2s forwards';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2500);
+  }
+}
+
+// ============================================================
+// 模块放置部分
+// ============================================================
 
 const frameMat = new THREE.MeshStandardMaterial({ color: FRAME_COLOR, roughness: 0.5, metalness: 0.35 });
 const frameMatGhost = new THREE.MeshStandardMaterial({ color: FRAME_COLOR, roughness: 0.5, metalness: 0.35, transparent: true, opacity: 0.35 });
@@ -479,6 +649,14 @@ function createPrismMesh(moduleId, opacity) {
 }
 
 function placeModule(q, r, moduleId) {
+  // 检查是否在场地边界内
+  if (!isInBoundary(q, r)) {
+    // 显示红色警告
+    flashCellWarning(q, r);
+    showSiteWarning('超出场地范围，无法放置模块！');
+    return;
+  }
+
   const key = hexKey(q, r);
   removeModuleRaw(key);
   const { x, z } = hexToWorld(q, r);
@@ -503,6 +681,66 @@ function removeModuleRaw(key) {
     delete meshes[key];
   }
   delete placed[key];
+}
+
+// 场地边界外点击时闪烁红色警告
+function flashCellWarning(q, r) {
+  const key = hexKey(q, r);
+  const cell = gridCells[key];
+  if (!cell) return;
+
+  const originalColor = cell.mesh.material.color.getHex();
+  const originalOpacity = cell.mesh.material.opacity;
+
+  // 闪烁红色 3 次
+  let count = 0;
+  const flash = () => {
+    if (count % 2 === 0) {
+      cell.mesh.material.color.set(0xCC5544);
+      cell.mesh.material.opacity = 0.7;
+    } else {
+      cell.mesh.material.color.set(originalColor);
+      cell.mesh.material.opacity = originalOpacity;
+    }
+    count++;
+    if (count < 6) {
+      setTimeout(flash, 100);
+    }
+  };
+  flash();
+}
+
+// 场景元素超出边界时闪烁红色警告（在放置位置显示一个红色标记）
+let sceneElementWarningMarker = null;
+function flashSceneElementWarning(x, z) {
+  // 移除之前的警告标记
+  if (sceneElementWarningMarker) {
+    scene.remove(sceneElementWarningMarker);
+    sceneElementWarningMarker = null;
+  }
+
+  // 创建红色警告标记（一个红色圆柱体）
+  const geo = new THREE.CylinderGeometry(0.15, 0.15, 0.5, 8);
+  const mat = new THREE.MeshBasicMaterial({ color: 0xCC5544, transparent: true, opacity: 0.7 });
+  sceneElementWarningMarker = new THREE.Mesh(geo, mat);
+  sceneElementWarningMarker.position.set(x, 0.25, z);
+  scene.add(sceneElementWarningMarker);
+
+  // 闪烁并自动移除
+  let count = 0;
+  const flash = () => {
+    count++;
+    sceneElementWarningMarker.material.opacity = count % 2 === 0 ? 0.7 : 0.2;
+    if (count < 6) {
+      setTimeout(flash, 100);
+    } else {
+      if (sceneElementWarningMarker) {
+        scene.remove(sceneElementWarningMarker);
+        sceneElementWarningMarker = null;
+      }
+    }
+  };
+  flash();
 }
 
 function animateScale(obj, target, onDone) {
@@ -932,7 +1170,9 @@ function updateStats() {
   const countsEl = document.getElementById('moduleCounts');
   
   if (totalEl) totalEl.textContent = total;
-  if (areaEl) areaEl.textContent = `${total * 12} m²`;
+  // 六边形面积 = (3√3/2) × 边长²，边长 490mm = 0.49m
+  const HEX_AREA = (3 * Math.sqrt(3) / 2) * 0.49 * 0.49; // ≈ 0.6237 m²
+  if (areaEl) areaEl.textContent = `${(total * HEX_AREA).toFixed(2)} m²`;
   if (priceEl) priceEl.textContent = `¥ ${totalPrice.toLocaleString()}`;
   
   if (countsEl) {
@@ -951,6 +1191,9 @@ window.editorAction = function(action) {
   if (action === 'clear') {
     Object.keys(meshes).forEach(key => { scene.remove(meshes[key]); delete meshes[key]; });
     Object.keys(placed).forEach(key => delete placed[key]);
+    // 清空场景元素
+    sceneElements.forEach(el => scene.remove(el));
+    sceneElements = [];
     undoStack = [];
     const btn = document.getElementById('editorUndoBtn');
     if (btn) { btn.disabled = true; btn.style.opacity = '.4'; }
@@ -1002,6 +1245,129 @@ window.takeScreenshot = function() {
   } catch(e) {
     console.error('截图失败:', e);
     alert('截图失败，请重试');
+  }
+};
+
+// 导出Excel报表
+window.exportDesignExcel = function() {
+  if (!renderer || !scene || !camera) {
+    alert('导出失败：编辑器未初始化');
+    return;
+  }
+
+  // 1. 统计模块数量
+  const counts = new Array(6).fill(0);
+  Object.values(placed).forEach(id => { if (id >= 0 && id < 6) counts[id]++; });
+
+  // 2. 创建Excel工作簿
+  const wb = XLSX.utils.book_new();
+
+  // 工作表1: 模块统计 - 使用公式计算合计
+  // SheetJS 公式格式: { f: "公式" }
+  const wsData = [
+    ['模块编号', '模块名称', '数量', '单价(元)', '小计(元)']  // 表头 (第1行)
+  ];
+
+  // 添加数据行 (第2-7行)
+  MODULES.forEach((m, i) => {
+    const rowNum = i + 2;
+    wsData.push([
+      m.code,
+      m.name,
+      counts[i],
+      m.price,
+      { f: 'C' + rowNum + '*D' + rowNum }  // 公式: 数量*单价
+    ]);
+  });
+
+  // 合计行 (第8行)
+  wsData.push([
+    '',
+    '合计',
+    { f: 'SUM(C2:C7)' },  // 数量合计公式
+    '',
+    { f: 'SUM(E2:E7)' }   // 小计合计公式
+  ]);
+
+  const ws1 = XLSX.utils.aoa_to_sheet(wsData);
+  ws1['!cols'] = [
+    { wch: 15 },  // 模块编号
+    { wch: 10 },  // 模块名称
+    { wch: 8 },   // 数量
+    { wch: 12 },  // 单价
+    { wch: 12 }   // 小计
+  ];
+  XLSX.utils.book_append_sheet(wb, ws1, '模块统计');
+
+  // 4. 下载Excel文件
+  const now = new Date();
+  const timestamp = now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
+  const excelFilename = 'MGILT模块统计_' + timestamp + '.xlsx';
+  XLSX.writeFile(wb, excelFilename);
+
+  // 5. 生成并下载俯视截图（隐藏场景元素）
+  const originalCameraPos = camera.position.clone();
+  const originalCameraTarget = controls.target.clone();
+  const originalAspect = camera.aspect;
+
+  // 临时隐藏场景元素
+  const sceneElementsVisible = sceneElements.map(el => el.visible);
+  sceneElements.forEach(el => el.visible = false);
+
+  // 计算模块边界，调整相机高度使所有内容可见
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  Object.keys(meshes).forEach(key => {
+    const mesh = meshes[key];
+    if (mesh) {
+      const pos = mesh.position;
+      minX = Math.min(minX, pos.x - 1);
+      maxX = Math.max(maxX, pos.x + 1);
+      minZ = Math.min(minZ, pos.z - 1);
+      maxZ = Math.max(maxZ, pos.z + 1);
+    }
+  });
+
+  // 如果没有模块，使用默认范围
+  if (minX === Infinity) {
+    minX = -10; maxX = 10; minZ = -10; maxZ = 10;
+  }
+
+  // 计算边界中心和范围
+  const centerX = (minX + maxX) / 2;
+  const centerZ = (minZ + maxZ) / 2;
+  const rangeX = maxX - minX;
+  const rangeZ = maxZ - minZ;
+  const maxRange = Math.max(rangeX, rangeZ) * 1.3; // 留一点边距
+
+  // 调整相机
+  const aspect = renderer.domElement.width / renderer.domElement.height;
+  camera.aspect = aspect;
+  const distance = maxRange / (2 * Math.tan(Math.PI / 8));  // 45度视角
+  camera.position.set(centerX, Math.max(distance, 20), centerZ + distance * 0.5);
+  camera.lookAt(centerX, 0, centerZ);
+  camera.updateProjectionMatrix();
+  renderer.render(scene, camera);
+
+  // 创建截图下载
+  const canvas = renderer.domElement;
+  const screenshotDataURL = canvas.toDataURL('image/png', 1.0);
+
+  // 恢复相机和场景元素
+  camera.position.copy(originalCameraPos);
+  controls.target.copy(originalCameraTarget);
+  camera.aspect = originalAspect;
+  camera.updateProjectionMatrix();
+  sceneElements.forEach((el, i) => el.visible = sceneElementsVisible[i]);
+  renderer.render(scene, camera);
+
+  // 下载截图
+  const link = document.createElement('a');
+  link.download = 'MGILT总平面图_' + timestamp + '.png';
+  link.href = screenshotDataURL;
+  link.click();
+
+  if (window.showToast) {
+    window.showToast('success', '报表和截图已导出');
   }
 };
 
@@ -1223,7 +1589,11 @@ const SCENE_ELEMENT_TYPES = [
   { id: 'small_round_table', name: '小圆桌', icon: '<img src="images/桌椅组合.png" style="width:32px;height:32px;object-fit:contain">' },
   { id: 'business_person_01', name: '商务人01', icon: '<img src="images/商务人员.png" style="width:32px;height:32px;object-fit:contain">' },
   { id: 'business_person_02', name: '商务人02', icon: '<img src="images/商务人员.png" style="width:32px;height:32px;object-fit:contain">' },
-  { id: 'business_person_03', name: '商务人03', icon: '<img src="images/商务人员.png" style="width:32px;height:32px;object-fit:contain">' }
+  { id: 'business_person_03', name: '商务人03', icon: '<img src="images/商务人员.png" style="width:32px;height:32px;object-fit:contain">' },
+  { id: 'school_blackboard', name: '学校白板', icon: '<img src="images/桌椅组合.png" style="width:32px;height:32px;object-fit:contain">' },
+  { id: 'student_01', name: '学生01', icon: '<img src="images/商务人员.png" style="width:32px;height:32px;object-fit:contain">' },
+  { id: 'student_02', name: '学生02', icon: '<img src="images/商务人员.png" style="width:32px;height:32px;object-fit:contain">' },
+  { id: 'student_03', name: '学生03', icon: '<img src="images/商务人员.png" style="width:32px;height:32px;object-fit:contain">' }
 ];
 
 // 初始化场景元素面板
@@ -1341,23 +1711,25 @@ window.initEditor = function() {
 window.randomFillDesign = randomFill;
 window.setCameraView = setCameraView;
 window.loadDesignToEditor = loadDesignToEditor;
+window.setSiteSize = setSiteSizeFromUI;
 
 const RECOMMEND_PRESETS = {
-  coffee: {
-    name: '咖啡店',
-    modules: [
-      { type: 'seat-low', positions: [[0,0],[1,0],[-1,0],[0,1],[0,-1]] },
-      { type: 'table', positions: [[0,0]] },
-      { type: 'planter-low', positions: [[2,0],[-2,0],[0,2],[0,-2],[2,1],[-2,1],[2,-1],[-2,-1]] },
-      { type: 'seat-high', positions: [[3,0],[-3,0],[0,3],[0,-3]] },
-    ]
-  },
   restaurant: {
     name: '餐厅外摆',
     modules: [
-      { type: 'table', positions: [[0,0],[2,0],[-2,0],[0,2],[0,-2]] },
-      { type: 'seat-low', positions: [[1,1],[-1,1],[1,-1],[-1,-1],[3,1],[-3,1],[1,3],[-1,3]] },
-      { type: 'planter-high', positions: [[4,0],[-4,0],[0,4],[0,-4]] },
+      { type: 'step', positions: [[-2,0],[-2,-1],[-3,1],[-1,-1],[-1,0],[-2,1],[-2,2],[-3,3],[-2,3],[-1,2],[-1,1],[0,0],[0,-1],[-1,-2],[0,-2]] },
+      { type: 'seat-low', positions: [[-3,2]] },
+      { type: 'planter-low', positions: [[-3,0],[0,1],[0,-3]] },
+      { type: 'planter-high', positions: [[0,2]] },
+      { type: 'seat-high', positions: [[-1,3],[1,-2]] },
+      { type: 'table', positions: [[1,-3]] },
+    ],
+    sceneElements: [
+      { elementType: 'small_round_table', x: -0.29186218975064904, y: 0.10000000003232559, z: 2.9309903023425203, rotationY: 0, surfaceHeight: 0.1 },
+      { elementType: 'single_chair', x: -2.7995568112328977, y: 0.10000049697058558, z: -1.945437701085167, rotationY: 4.71238898038469, surfaceHeight: 0.1 },
+      { elementType: 'umbrella', x: -1.6325704690330696, y: 0.0000012256766002138875, z: -5.774714143771643, rotationY: 4.71238898038469, surfaceHeight: 0 },
+      { elementType: 'business_person_01', x: -1.5317981299597339, y: 0.0999999999611789, z: 1.2659561968676245, rotationY: 0, surfaceHeight: 0.1 },
+      { elementType: 'business_person_02', x: -1.5109559704584008, y: 0.10000009295399802, z: 3.732931802875959, rotationY: 3.141592653589793, surfaceHeight: 0.1 }
     ]
   },
   office: {
@@ -1368,30 +1740,33 @@ const RECOMMEND_PRESETS = {
       { type: 'seat-low', positions: [[-2,2],[4,-5]] },
       { type: 'table', positions: [[-2,3],[4,-6]] },
       { type: 'planter-low', positions: [[3,-1],[0,-2],[3,-6]] },
+    ],
+    sceneElements: [
+      { elementType: 'umbrella', x: 0.8913139709953803, y: 0.0000012256766002138875, z: -10.32163795413322, rotationY: 4.71238898038469, surfaceHeight: 0 },
+      { elementType: 'four_table_chair', x: 0.7960096214266219, y: 0.09962464233736937, z: -0.6296060751853458, rotationY: 2.356194490192345, surfaceHeight: 0.1 },
+      { elementType: 'single_chair', x: -0.6249059828162498, y: 0.10000049697058558, z: -6.108006687202047, rotationY: 4.71238898038469, surfaceHeight: 0.1 },
+      { elementType: 'single_chair', x: 2.0087419546139884, y: 0.10000049697058558, z: 3.6701443468463846, rotationY: 7.853981633974483, surfaceHeight: 0.1 },
+      { elementType: 'business_person_01', x: 1.369981947261934, y: 0.0999999999611789, z: -3.8628810673336704, rotationY: 0, surfaceHeight: 0.1 },
+      { elementType: 'business_person_02', x: 2.597453658639205, y: 0.10000009295399802, z: 1.9190800369831829, rotationY: 0.7853981633974483, surfaceHeight: 0.1 },
+      { elementType: 'business_person_03', x: -0.28301600226748747, y: 0.10000000004758688, z: -2.47515031963297, rotationY: 3.141592653589793, surfaceHeight: 0.1 }
     ]
   },
   school: {
     name: '学校庭院',
     modules: [
-      { type: 'seat-low', positions: [[0,0],[1,0],[-1,0],[0,1],[0,-1],[2,0],[-2,0],[0,2],[0,-2]] },
-      { type: 'table', positions: [[3,0],[-3,0],[0,3],[0,-3],[3,3],[-3,3],[3,-3],[-3,-3]] },
-      { type: 'planter-high', positions: [[5,0],[-5,0],[0,5],[0,-5]] },
-    ]
-  },
-  lounge: {
-    name: '休闲 lounge',
-    modules: [
-      { type: 'seat-high', positions: [[0,0],[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]] },
-      { type: 'planter-low', positions: [[3,0],[-3,0],[0,3],[0,-3],[3,3],[-3,3],[3,-3],[-3,-3]] },
-      { type: 'table', positions: [[4,1],[-4,1],[4,-1],[-4,-1]] },
-    ]
-  },
-  retail: {
-    name: '零售店铺',
-    modules: [
-      { type: 'table', positions: [[0,0],[1,0],[-1,0],[0,1],[0,-1]] },
-      { type: 'seat-low', positions: [[2,0],[-2,0],[0,2],[0,-2],[2,1],[-2,1],[2,-1],[-2,-1]] },
-      { type: 'planter-high', positions: [[4,0],[-4,0],[0,4],[0,-4],[4,2],[-4,2],[4,-2],[-4,-2]] },
+      { type: 'step', positions: [[1,-1],[0,0],[-1,0],[0,-1],[1,0],[1,-2],[2,-1],[2,-2],[2,0],[3,-1],[3,-2],[3,0],[2,-3],[0,-2],[-1,-1],[-1,-2],[0,-3],[-2,-1],[-2,1],[-1,1],[-2,2],[-1,2],[0,1],[0,2],[1,1],[2,1]] },
+      { type: 'seat-low', positions: [[4,-1],[3,-3],[1,-3],[-1,-3]] },
+      { type: 'table', positions: [[4,-2],[-2,0]] },
+      { type: 'seat-high', positions: [[3,-4],[2,-4],[-2,-2]] },
+      { type: 'planter-low', positions: [[-2,3],[-3,2],[1,2]] },
+      { type: 'planter-high', positions: [[-3,3],[-3,1],[2,2]] },
+    ],
+    sceneElements: [
+      { elementType: 'school_blackboard', x: 0.12820290418951297, y: 0.1000000969226299, z: 2.286350901142953, rotationY: 7.853981633974483, surfaceHeight: 0.1 },
+      { elementType: 'student_01', x: -0.5974975107823308, y: 0.10000001739335448, z: -1.6679464601958767, rotationY: 0, surfaceHeight: 0.1 },
+      { elementType: 'student_02', x: -1.1709150829951547, y: 0.10000173708067842, z: 0.4386522131950885, rotationY: 2.356194490192345, surfaceHeight: 0.1 },
+      { elementType: 'business_person_01', x: 1.0189295790788702, y: 0.0999999999611789, z: -3.3537050657455096, rotationY: 0, surfaceHeight: 0.1 },
+      { elementType: 'student_03', x: 2.599568368569747, y: 0.10000063191038358, z: -1.0241268978608458, rotationY: 5.497787143782138, surfaceHeight: 0.1 }
     ]
   }
 };
@@ -1407,6 +1782,9 @@ function applyRecommend(type) {
 
   Object.keys(meshes).forEach(key => { scene.remove(meshes[key]); delete meshes[key]; });
   Object.keys(placed).forEach(key => delete placed[key]);
+  // 清空场景元素
+  sceneElements.forEach(el => scene.remove(el));
+  sceneElements = [];
   undoStack = [];
 
   const btn = document.getElementById('editorUndoBtn');
@@ -1427,7 +1805,14 @@ function applyRecommend(type) {
     });
   });
 
-  setTimeout(() => { updateStats(); updatePaletteBadges(); }, delay + 100);
+  setTimeout(() => {
+    updateStats();
+    updatePaletteBadges();
+    // 加载预设的场景元素
+    if (preset.sceneElements && preset.sceneElements.length > 0) {
+      window.loadSceneElementsData(preset.sceneElements);
+    }
+  }, delay + 100);
   closeRecommendMenu();
 }
 
@@ -1466,16 +1851,23 @@ function saveDesignToAccount(name) {
     window.location.hash = 'login';
     return;
   }
-  // Capture screenshot from renderer
+  // Capture screenshot from renderer (smaller size for localStorage)
   let screenshot = null;
   if (renderer && renderer.domElement) {
-    screenshot = renderer.domElement.toDataURL('image/png');
+    // Create smaller canvas for screenshot
+    const smallCanvas = document.createElement('canvas');
+    smallCanvas.width = 400;
+    smallCanvas.height = 300;
+    const ctx = smallCanvas.getContext('2d');
+    ctx.drawImage(renderer.domElement, 0, 0, 400, 300);
+    screenshot = smallCanvas.toDataURL('image/jpeg', 0.7);
   }
   const designData = {
     id: Date.now(),
     timestamp: new Date().toISOString(),
     name: name || ('设计方案 ' + new Date().toLocaleDateString('zh-CN')),
     modules: JSON.parse(JSON.stringify(placed)),
+    sceneElements: exportSceneElementsData(),
     screenshot: screenshot
   };
   let savedDesigns = JSON.parse(localStorage.getItem('mgilt_designs') || '[]');
@@ -1506,10 +1898,15 @@ window.updateDesignToAccount = function(name) {
     alert('未找到要更新的方案');
     return;
   }
-  // Capture screenshot from renderer
+  // Capture screenshot from renderer (smaller size for localStorage)
   let screenshot = null;
   if (renderer && renderer.domElement) {
-    screenshot = renderer.domElement.toDataURL('image/png');
+    const smallCanvas = document.createElement('canvas');
+    smallCanvas.width = 400;
+    smallCanvas.height = 300;
+    const ctx = smallCanvas.getContext('2d');
+    ctx.drawImage(renderer.domElement, 0, 0, 400, 300);
+    screenshot = smallCanvas.toDataURL('image/jpeg', 0.7);
   }
   let savedDesigns = JSON.parse(localStorage.getItem('mgilt_designs') || '[]');
   const index = savedDesigns.findIndex(d => d.id === design.id);
@@ -1518,6 +1915,7 @@ window.updateDesignToAccount = function(name) {
       ...savedDesigns[index],
       name: name || savedDesigns[index].name,
       modules: JSON.parse(JSON.stringify(placed)),
+      sceneElements: exportSceneElementsData(),
       screenshot: screenshot,
       timestamp: new Date().toISOString()
     };
@@ -1590,6 +1988,9 @@ function completeDesignLoad() {
   // console.log('Loading design with modules:', design.modules);
   Object.keys(meshes).forEach(key => { scene.remove(meshes[key]); delete meshes[key]; });
   Object.keys(placed).forEach(key => delete placed[key]);
+  // 清空场景元素
+  sceneElements.forEach(el => scene.remove(el));
+  sceneElements = [];
   undoStack = [];
   const btn = document.getElementById('editorUndoBtn');
   if (btn) { btn.disabled = true; btn.style.opacity = '.4'; }
@@ -1607,6 +2008,14 @@ function completeDesignLoad() {
   });
   updateStats();
   updatePaletteBadges();
+
+  // 加载场景元素（如果有）
+  if (design.sceneElements && design.sceneElements.length > 0) {
+    setTimeout(() => {
+      window.loadSceneElementsData(design.sceneElements);
+    }, 500);
+  }
+
   if (window.showToast) window.showToast('info', '已加载设计方案：' + design.name);
 }
 
@@ -1631,6 +2040,8 @@ let selectedElement = null;
 let sceneElementMode = false;
 let elementSelectMode = false;
 let elementDragging = false; // 是否在拖拽场景元素
+let pendingSceneElements = []; // 待加载的场景元素队列（用于加载设计时）
+let sceneElementsLoadedCount = 0; // 已加载的场景元素数量
 
 const SCENE_ELEMENTS = {
   umbrella: { id: 'umbrella', name: '阳伞', path: 'models/阳伞2.glb', scale: 2 },
@@ -1639,7 +2050,83 @@ const SCENE_ELEMENTS = {
   small_round_table: { id: 'small_round_table', name: '小圆桌', path: 'models/小圆桌.glb', scale: 2 },
   business_person_01: { id: 'business_person_01', name: '商务人01', path: 'models/商务人01.glb', scale: 2 },
   business_person_02: { id: 'business_person_02', name: '商务人02', path: 'models/商务人02.glb', scale: 2 },
-  business_person_03: { id: 'business_person_03', name: '商务人03', path: 'models/商务人03.glb', scale: 2 }
+  business_person_03: { id: 'business_person_03', name: '商务人03', path: 'models/商务人03.glb', scale: 2 },
+  school_blackboard: { id: 'school_blackboard', name: '学校白板', path: 'models/学校白板.glb', scale: 2 },
+  student_01: { id: 'student_01', name: '学生01', path: 'models/学生01.glb', scale: 2 },
+  student_02: { id: 'student_02', name: '学生02', path: 'models/学生02.glb', scale: 2 },
+  student_03: { id: 'student_03', name: '学生03', path: 'models/学生03.glb', scale: 2 }
+};
+
+// 导出场景元素数据（用于保存设计）
+function exportSceneElementsData() {
+  return sceneElements.map(el => ({
+    elementType: el.userData.elementType,
+    x: el.position.x,
+    y: el.position.y,
+    z: el.position.z,
+    rotationY: el.rotation.y,
+    surfaceHeight: el.userData.surfaceHeight || 0
+  }));
+}
+window.exportSceneElementsData = exportSceneElementsData;
+
+// 加载场景元素数据（用于恢复设计）
+window.loadSceneElementsData = function(elementsData) {
+  if (!elementsData || !Array.isArray(elementsData) || elementsData.length === 0) return;
+
+  pendingSceneElements = elementsData;
+  sceneElementsLoadedCount = 0;
+
+  // 逐个加载场景元素
+  function loadNext() {
+    if (sceneElementsLoadedCount >= pendingSceneElements.length) {
+      pendingSceneElements = [];
+      if (window.showToast) window.showToast('info', '场景元素已加载');
+      return;
+    }
+
+    const data = pendingSceneElements[sceneElementsLoadedCount];
+    const config = SCENE_ELEMENTS[data.elementType];
+    if (!config) {
+      sceneElementsLoadedCount++;
+      loadNext();
+      return;
+    }
+
+    // 设置当前元素配置并加载模型
+    currentElementConfig = config;
+    window.loadSceneElementModel(data.elementType);
+
+    // 等待模型加载完成后放置
+    const checkLoaded = setInterval(() => {
+      if (currentSceneElementModel && currentSceneElementModel.userData.elementType === data.elementType) {
+        clearInterval(checkLoaded);
+        // 使用保存的位置和旋转创建实例
+        const instance = currentSceneElementModel.clone();
+        instance.position.set(data.x, data.y, data.z);
+        instance.rotation.y = data.rotationY;
+        instance.visible = true;
+        instance.userData.isSceneElement = true;
+        instance.userData.elementType = data.elementType;
+        instance.userData.selected = false;
+        instance.userData.baseY = data.y - (data.surfaceHeight || 0);
+        instance.userData.surfaceHeight = data.surfaceHeight || 0;
+        instance.userData.originalMaterials = [];
+        instance.traverse(child => {
+          if (child.isMesh && child.material) {
+            instance.userData.originalMaterials.push({ mesh: child, material: child.material });
+          }
+        });
+        scene.add(instance);
+        sceneElements.push(instance);
+
+        sceneElementsLoadedCount++;
+        loadNext();
+      }
+    }, 100);
+  }
+
+  loadNext();
 };
 
 let umbrellaOriginalMaterials = []; // 保存原始材质用于恢复选中状态
@@ -1778,6 +2265,13 @@ window.toggleSceneElementMode = function(elementId) {
 };
 
 window.placeSceneElementAt = function(x, z, rotationY, baseHeight) {
+  // 检查是否在场地边界内
+  if (!isPointInBoundary(x, z)) {
+    showSiteWarning('超出场地范围，无法放置场景元素！');
+    flashSceneElementWarning(x, z);
+    return;
+  }
+
   if (!currentSceneElementModel) {
     console.warn('场景元素模型未加载');
     return;
@@ -1804,6 +2298,8 @@ window.placeSceneElementAt = function(x, z, rotationY, baseHeight) {
   sceneElements.push(instance);
   // console.log('已放置场景元素 at', x, z, 'finalY:', finalY, 'surfaceHeight:', baseHeight);
 };
+
+window.placeSceneElementAt = placeSceneElementAt;
 
 // 选中场景元素（带高亮效果）
 function selectSceneElement(element) {
