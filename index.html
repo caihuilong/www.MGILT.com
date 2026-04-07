@@ -1036,19 +1036,19 @@ input,select,textarea{font-family:inherit;font-size:inherit}
       </div>
     </div>
   </div>
-  <div class="mobile-toggle" onclick="toggleMobile()"><span></span><span></span><span></span></div>
+  <div class="mobile-toggle" id="mobileToggleBtn"><span></span><span></span><span></span></div>
 </div>
 </nav>
 <div class="mobile-menu" id="mobileMenu">
-  <a href="#home" onclick="navMobile('home')">首页 Home</a>
-  <a href="#system" onclick="navMobile('system')">模块系统 System</a>
-  <a href="#cases" onclick="navMobile('cases')">空间灵感 Cases</a>
-  <a href="#editor" onclick="navMobile('editor')">设计你的MGILT Editor</a>
-  <a href="#about" onclick="navMobile('about')">关于MGILT About</a>
-  <a href="#partner" onclick="navMobile('partner')">合作伙伴 Partner</a>
-  <a href="#login" onclick="navMobile('login')" id="mobileNavLogin">登录 Login</a>
-  <a href="#dashboard" onclick="navMobile('dashboard')" id="mobileNavDashboard" style="display:none">我的设计</a>
-  <a href="#" onclick="doLogout();navMobile('home')" id="mobileNavLogout" style="display:none">退出登录</a>
+  <a href="#home" data-page="home">首页 Home</a>
+  <a href="#system" data-page="system">模块系统 System</a>
+  <a href="#cases" data-page="cases">空间灵感 Cases</a>
+  <a href="#editor" data-page="editor">设计你的MGILT Editor</a>
+  <a href="#about" data-page="about">关于MGILT About</a>
+  <a href="#partner" data-page="partner">合作伙伴 Partner</a>
+  <a href="#login" data-page="login" id="mobileNavLogin">登录 Login</a>
+  <a href="#dashboard" data-page="dashboard" id="mobileNavDashboard" style="display:none">我的设计</a>
+  <a href="#" id="mobileNavLogout" style="display:none">退出登录</a>
 </div>
 
 <!-- PAGE: HOME -->
@@ -2326,6 +2326,40 @@ function navigateTo(page){window.location.hash=page}
 window.navigateTo=navigateTo;
 function navMobile(page){document.getElementById('mobileMenu').classList.remove('open');navigateTo(page)}
 function toggleMobile(){document.getElementById('mobileMenu').classList.toggle('open')}
+
+// 手机菜单点击事件（使用 addEventListener 确保移动端兼容性）
+document.addEventListener('DOMContentLoaded', function() {
+  // 汉堡菜单按钮
+  const toggleBtn = document.getElementById('mobileToggleBtn');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      toggleMobile();
+    });
+  }
+
+  // 手机菜单链接
+  const mobileMenu = document.getElementById('mobileMenu');
+  if (mobileMenu) {
+    mobileMenu.querySelectorAll('a[data-page]').forEach(function(link) {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const page = this.getAttribute('data-page');
+        navMobile(page);
+      });
+    });
+
+    // 退出登录
+    const logoutLink = document.getElementById('mobileNavLogout');
+    if (logoutLink) {
+      logoutLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        doLogout();
+        navMobile('home');
+      });
+    }
+  }
+});
 window.toggleModulePalette=function(){const h=document.getElementById('modulePaletteHeader');const p=document.getElementById('modulePalette');const isCollapsed=h.classList.contains('collapsed');if(isCollapsed){h.classList.remove('collapsed');p.style.display='block'}else{h.classList.add('collapsed');p.style.display='none'}};
 function showTab(tab){
   if(tab==='login'){
